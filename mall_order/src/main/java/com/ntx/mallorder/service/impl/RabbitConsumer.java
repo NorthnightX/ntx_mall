@@ -54,8 +54,7 @@ public class RabbitConsumer {
         tOrder.setSendTime(LocalDateTime.now());
         tOrder.setEndTime(LocalDateTime.now());
         //生成id
-        long id = IdUtil.getSnowflake().nextId();
-        tOrder.setOrderNo(id);
+        long id = tOrder.getOrderNo();
         //查询购物车
         List<TCart> userCheckedCart = cartClient.getUserCheckedCart(Math.toIntExact(tOrder.getUserId()));
         Map<Long, TCart> cartMap = userCheckedCart.stream().collect(Collectors.toMap(TCart::getProductId, tcart -> tcart));
@@ -109,7 +108,5 @@ public class RabbitConsumer {
         //移除用户的购物车信息
         cartClient.removeUserCart(tOrder.getUserId());
         //发送用户购买信息到kafka，用于数据分析
-
-
     }
 }

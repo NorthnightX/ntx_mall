@@ -169,10 +169,10 @@ public class TCartServiceImpl extends ServiceImpl<TCartMapper, TCart>
             String redisKey = USER_CART + userId;
             String redisKeyProduct = USER_CART_PRODUCT + userId;
             //根据用户获取用户的购物车id
+            //如果是该用户的购物车
             if(Objects.equals(userId, tCart.getUserId())){
-                tCart.setDeleted(0);
-                tCart.setGmtModified(LocalDateTime.now());
-                this.updateById(tCart);
+                //删除该条数据
+                this.removeById(id);
                 stringRedisTemplate.opsForSet().remove(redisKey, tCart.getId().toString());
                 stringRedisTemplate.opsForSet().remove(redisKeyProduct, tCart.getProductId().toString());
                 Query query = new Query();
@@ -260,19 +260,26 @@ public class TCartServiceImpl extends ServiceImpl<TCartMapper, TCart>
         }).collect(Collectors.toList());
     }
 
+    /**
+     * 付款后移除用户该订单的购物车信息
+     * @param userId
+     * @return
+     */
     @Override
     public Boolean deleteUserCartAfterPay(Integer userId) {
         String redisKey = USER_CART + userId;
         String redisKeyProduct = USER_CART_PRODUCT + userId;
-        this.update().eq("userId", userId).eq("checked", 1).
-                set("deleted", 0).set("checked", 0).update();
+        LambdaQueryWrapper<TCart> queryWrapper = new LambdaQueryWrapper<>();
+        queryWrapper.eq(TCart::getUserId, userId);
+        queryWrapper.eq(TCart::getChecked, 1);
+        this.remove(queryWrapper);
         Query query = new Query();
-        query.addCriteria(Criteria.where("_id").is(userId)).
-                addCriteria(Criteria.where("checked").is(0));
+        query.addCriteria(Criteria.where("userId").is(userId)).
+                addCriteria(Criteria.where("checked").is(1));
         List<CartDTO> allAndRemove = mongoTemplate.findAllAndRemove(query, CartDTO.class);
         for (CartDTO cartDTO : allAndRemove) {
-            stringRedisTemplate.opsForSet().remove(redisKey, cartDTO.getId());
-            stringRedisTemplate.opsForSet().remove(redisKeyProduct, cartDTO.getProductId());
+            stringRedisTemplate.opsForSet().remove(redisKey, cartDTO.getId().toString());
+            stringRedisTemplate.opsForSet().remove(redisKeyProduct, cartDTO.getProductId().toString());
         }
         return true;
     }
