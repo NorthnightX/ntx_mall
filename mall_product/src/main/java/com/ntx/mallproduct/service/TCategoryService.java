@@ -26,4 +26,6 @@ public interface TCategoryService extends IService<TCategory> {
     Result addCategory(TCategory category);
 
     Result getAllCategory();
+
+    Result queryChildCategory(Integer id);
 }

@@ -87,4 +87,14 @@ public class TCategoryController {
     public Result addCategory(@RequestBody TCategory category){
         return categoryService.addCategory(category);
     }
+
+    /**
+     * 获取分类对应的子分类
+     * @param id
+     * @return
+     */
+    @GetMapping("queryChildCategory")
+    public Result queryChildCategory(@RequestParam Integer id){
+        return categoryService.queryChildCategory(id);
+    }
 }

@@ -37,6 +37,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.io.IOException;
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
@@ -215,6 +216,22 @@ public class TProductServiceImpl extends ServiceImpl<TProductMapper, TProduct>
         product.setGmtModified(LocalDateTime.now());
         product.setDeleted(ADD_PRODUCT_DELETED);
         product.setStatus(ADD_PRODUCT_STATUS);
+        String productName = product.getName();
+        if(productName == null || productName.length() == 0){
+            return Result.error("请输入商品名");
+        }
+        BigDecimal price = product.getPrice();
+        if(price == null || price.compareTo(BigDecimal.ZERO) < 0){
+            return Result.error("请设置正常的商品价格");
+        }
+        Long categoryId = product.getCategoryId();
+        if(categoryId == null){
+            return Result.error("请选择分类");
+        }
+        TCategory category = categoryService.getById(categoryId);
+        if(category == null){
+            return Result.error("请选择存在的分类");
+        }
         String subImages = product.getSubImages();
         List list = JSON.parseObject(subImages, List.class);
         if(list.size() == 0){
@@ -222,9 +239,6 @@ public class TProductServiceImpl extends ServiceImpl<TProductMapper, TProduct>
         }
         product.setMainImage((String) list.get(0));
         boolean save = this.save(product);
-
-        Long categoryId = product.getCategoryId();
-        TCategory category = categoryService.getById(categoryId);
         ProductDTO productDTO = new ProductDTO();
         BeanUtil.copyProperties(product, productDTO);
         productDTO.setCategoryName(category.getName());
@@ -236,7 +250,7 @@ public class TProductServiceImpl extends ServiceImpl<TProductMapper, TProduct>
     }
 
     /**
-     * 根据分类id查找商品
+     * 根据分类id推荐商品
      * @param id
      * @return
      */
@@ -245,7 +259,7 @@ public class TProductServiceImpl extends ServiceImpl<TProductMapper, TProduct>
         Query query = new Query();
         query.addCriteria(Criteria.where("categoryId").is(id));
         //根据销量倒序
-        query.with(Sort.by(Sort.Direction.DESC, "saleCount"));
+        query.with(Sort.by(Sort.Direction.DESC, "saleCount")).limit(20);
         List<ProductDTO> productDTOS = mongoTemplate.find(query, ProductDTO.class);
         if(productDTOS.size() > 0){
             return Result.success(productDTOS);
@@ -304,7 +318,7 @@ public class TProductServiceImpl extends ServiceImpl<TProductMapper, TProduct>
     }
 
     /**
-     * 默认推荐产品
+     * 默认推荐产品,销量前20的商品
      * @return
      */
     @Override
@@ -364,7 +378,7 @@ public class TProductServiceImpl extends ServiceImpl<TProductMapper, TProduct>
     }
 
     /**
-     * 更新库存
+     * 更新库存,增加销量
      * @param updateMap
      * @return
      */
@@ -377,12 +391,13 @@ public class TProductServiceImpl extends ServiceImpl<TProductMapper, TProduct>
             while (retryCount > 0) {
                 TProduct product = this.getById(productId);
                 int stock = product.getStock();
+                int saleCount = product.getSaleCount();
                 int newStock = stock - quantity;
                 if (stock - quantity > 0) {
                     boolean update = this.update()
                             .set("stock", newStock)
-                            .set("gmt_modified", LocalDateTime.now())
                             .eq("stock", stock)
+                            .eq("sale_count", saleCount)
                             .eq("id", productId)
                             .update();
                     if (update) {
@@ -390,11 +405,11 @@ public class TProductServiceImpl extends ServiceImpl<TProductMapper, TProduct>
                         Query query = new Query();
                         query.addCriteria(Criteria.where("_id").is(productId));
                         Update updateMongoD = new Update();
-                        updateMongoD.set("stock", newStock);
+                        updateMongoD.set("stock", newStock).set("saleCount", saleCount);
                         mongoTemplate.updateFirst(query, updateMongoD, ProductDTO.class);
                         //更新ES
                         UpdateRequest updateRequest = new UpdateRequest("product", productId.toString());
-                        updateRequest.doc("stock",newStock);
+                        updateRequest.doc("stock",newStock, "saleCount", saleCount);
                         try {
                             client.update(updateRequest, RequestOptions.DEFAULT);
                         } catch (IOException e) {

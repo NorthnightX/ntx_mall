@@ -200,6 +200,11 @@ public class TCategoryServiceImpl extends ServiceImpl<TCategoryMapper, TCategory
      */
     @Override
     public Result addCategory(TCategory category) {
+        Long parentId = category.getParentId();
+        TCategory tCategory = this.getById(parentId);
+        if(tCategory.getParentId() != 0){
+            return Result.error("分类层级过深，请重新考虑层级关系");
+        }
         category.setGmtCreate(LocalDateTime.now());
         category.setGmtModified(LocalDateTime.now());
         category.setDeleted(ADD_CATEGORY_DELETED);
@@ -208,7 +213,6 @@ public class TCategoryServiceImpl extends ServiceImpl<TCategoryMapper, TCategory
         //保存到mongodb
         CategoryDTO categoryDTO = new CategoryDTO();
         BeanUtil.copyProperties(category, categoryDTO);
-        Long parentId = category.getParentId();
         if(parentId == 0){
             categoryDTO.setParentName(category.getName());
         }
@@ -249,6 +253,14 @@ public class TCategoryServiceImpl extends ServiceImpl<TCategoryMapper, TCategory
             return categoryDTO;
         }).collect(Collectors.toList());
         return Result.success(categoryDTOList);
+    }
+
+    @Override
+    public Result queryChildCategory(Integer id) {
+        Query query = new Query();
+        query.addCriteria(Criteria.where("parentId").is(id));
+        List<CategoryDTO> categoryDTOS = mongoTemplate.find(query, CategoryDTO.class);
+        return Result.success(categoryDTOS);
     }
 }
 
