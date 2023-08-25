@@ -1,0 +1,33 @@
+server:
+  port: 8089
+spring:
+  cloud:
+    nacos:
+      server-addr: 127.0.0.1:8848
+      #      server-addr: 8.140.17.235:8848
+      discovery:
+        cluster-name: ShangHai #配置集群
+  #        namespace: 4981c7e3-e3c9-481d-8ec0-16611aba0394 #命名空间的id
+
+  # 标记应用名称,用于nacos注册
+  application:
+    name: mallUploadService
+  jackson:
+    default-property-inclusion: non_null
+  servlet:
+    multipart:
+      max-file-size: 300MB
+      max-request-size: 350MB
+
+logging:
+  level:
+    com.ntx: debug
+ribbon:
+  eager-load:
+    enabled: true
+
+
+#eureka:
+#  client:
+#    service-url:
+#      defaultZone: http:127.0.0.1:10086/eureka

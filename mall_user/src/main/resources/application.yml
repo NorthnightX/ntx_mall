@@ -1,0 +1,78 @@
+server:
+  port: 8081
+spring:
+  rabbitmq:
+    host: localhost
+    virtual-host: /ntx
+    port: 5672
+    username: root
+    password: 123456
+    listener:
+      simple:
+        prefetch: 1 #消息预取，处理完才能获取下一个消息
+  mail:
+    host: smtp.qq.com
+    username: 2927697242@qq.com
+    password: nltlcygbednxdgea
+    properties:
+      mail:
+        smtp:
+          auth: true
+          starttls:
+            enable: true
+            required: true
+  cloud:
+    nacos:
+      discovery:
+        server-addr: 127.0.0.1:8848
+
+  #        server-addr: 8.140.17.235:8848
+  # 标记应用名称,用于注册中心注册
+  application:
+    name: mallUserService
+  datasource:
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    url: jdbc:mysql://127.0.0.1:3306/n_mall_user?useSSL=false&serverTimezone=UTC
+    username: root
+    password: 123456
+
+  redis:
+    port: 6379
+    password: 123456
+    lettuce:
+      pool:
+        max-active: 10
+        max-idle: 10
+        min-idle: 1
+        time-between-eviction-runs: 10s
+    host: 8.140.17.235
+  #      host: 192.168.80.128
+  jackson:
+    default-property-inclusion: non_null
+  servlet:
+    multipart:
+      max-file-size: 300MB
+      max-request-size: 350MB
+
+mybatis-plus:
+  type-aliases-package: com.ntx.mallcommon.domain
+  configuration:
+    map-underscore-to-camel-case: true
+
+logging:
+  level:
+    com.ntx: debug
+#eureka:
+#  client:
+#    service-url:
+#      defaultZone: http:127.0.0.1:10086/eureka
+
+# feign调用超时时间配置
+feign:
+  client:
+    config:
+      default:
+        connectTimeout: 600000
+        readTimeout: 600000
+  hystrix:
+    enabled: false    # 不要开启hystrix，会导致超时配置不生效

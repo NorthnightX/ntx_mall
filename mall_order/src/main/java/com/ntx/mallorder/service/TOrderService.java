@@ -1,0 +1,16 @@
+package com.ntx.mallorder.service;
+
+
+import com.baomidou.mybatisplus.extension.service.IService;
+import com.ntx.mallcommon.domain.Result;
+import com.ntx.mallcommon.domain.TOrder;
+
+/**
+* @author NorthnightX
+* @description 针对表【t_order】的数据库操作Service
+* @createDate 2023-08-21 21:55:07
+*/
+public interface TOrderService extends IService<TOrder> {
+
+    Result payOrder(TOrder order);
+}
