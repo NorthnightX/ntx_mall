@@ -271,8 +271,12 @@ public class TProductServiceImpl extends ServiceImpl<TProductMapper, TProduct>
      */
     @Override
     public Result queryProductByCategoryId(Integer id) {
+        Query queryCategory = new Query();
+        queryCategory.addCriteria(Criteria.where("parentId").is(id));
+        List<CategoryDTO> categoryDTOS = mongoTemplate.find(queryCategory, CategoryDTO.class);
+        List<Long> collect = categoryDTOS.stream().map(CategoryDTO::getId).collect(Collectors.toList());
         Query query = new Query();
-        query.addCriteria(Criteria.where("categoryId").is(id));
+        query.addCriteria(Criteria.where("categoryId").in(collect));
         //根据销量倒序
         query.with(Sort.by(Sort.Direction.DESC, "saleCount")).limit(20);
         List<ProductDTO> productDTOS = mongoTemplate.find(query, ProductDTO.class);
@@ -425,6 +429,7 @@ public class TProductServiceImpl extends ServiceImpl<TProductMapper, TProduct>
                             .eq("stock", stock)
                             .eq("sale_count", saleCount)
                             .eq("id", productId)
+                            .gt("stock", 0)
                             .update();
                     if (update) {
                         //如果更新成功，更新mongoDB的数据和es中的数据
