@@ -44,5 +44,5 @@ public interface TProductService extends IService<TProduct> {
 
     Result queryAllProductByCategoryId(Integer id);
 
-    Result queryInitialProduct(Integer pageNum, Integer pageSize, int categoryId);
+//    Result queryInitialProduct(Integer pageNum, Integer pageSize, int categoryId);
 }

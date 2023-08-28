@@ -499,30 +499,30 @@ public class TProductServiceImpl extends ServiceImpl<TProductMapper, TProduct>
         return Result.success(productDTOS);
     }
 
-    /**
-     * 查询基分类下的所有商品
-     * @param pageNum
-     * @param pageSize
-     * @param categoryId
-     * @return
-     */
-    @Override
-    public Result queryInitialProduct(Integer pageNum, Integer pageSize, int categoryId) {
-        Page<ProductDTO> page = new Page<>(pageNum, pageSize);
-        Query query = new Query();
-        query.addCriteria(Criteria.where("parentId").is(categoryId));
-        List<CategoryDTO> categoryDTOS = mongoTemplate.find(query, CategoryDTO.class);
-        List<Long> categoryChildIdList = categoryDTOS.stream().map(CategoryDTO::getId).collect(Collectors.toList());
-        Query queryProduct = new Query();
-        queryProduct.addCriteria(Criteria.where("categoryId").in(categoryChildIdList));
-        long count = mongoTemplate.count(queryProduct, ProductDTO.class);
-        page.setTotal(count);
-        queryProduct.limit(pageSize).skip((long) (pageNum - 1) * pageSize);
-        queryProduct.with(Sort.by(Sort.Direction.DESC, "saleCount"));
-        List<ProductDTO> productDTOS = mongoTemplate.find(queryProduct, ProductDTO.class);
-        page.setRecords(productDTOS);
-        return Result.success(page);
-    }
+//    /**
+//     * 查询基分类下的所有商品
+//     * @param pageNum
+//     * @param pageSize
+//     * @param categoryId
+//     * @return
+//     */
+//    @Override
+//    public Result queryInitialProduct(Integer pageNum, Integer pageSize, int categoryId) {
+//        Page<ProductDTO> page = new Page<>(pageNum, pageSize);
+//        Query query = new Query();
+//        query.addCriteria(Criteria.where("parentId").is(categoryId));
+//        List<CategoryDTO> categoryDTOS = mongoTemplate.find(query, CategoryDTO.class);
+//        List<Long> categoryChildIdList = categoryDTOS.stream().map(CategoryDTO::getId).collect(Collectors.toList());
+//        Query queryProduct = new Query();
+//        queryProduct.addCriteria(Criteria.where("categoryId").in(categoryChildIdList));
+//        long count = mongoTemplate.count(queryProduct, ProductDTO.class);
+//        page.setTotal(count);
+//        queryProduct.limit(pageSize).skip((long) (pageNum - 1) * pageSize);
+//        queryProduct.with(Sort.by(Sort.Direction.DESC, "saleCount"));
+//        List<ProductDTO> productDTOS = mongoTemplate.find(queryProduct, ProductDTO.class);
+//        page.setRecords(productDTOS);
+//        return Result.success(page);
+//    }
 }
 
 
