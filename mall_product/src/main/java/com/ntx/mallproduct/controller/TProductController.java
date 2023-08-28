@@ -144,4 +144,35 @@ public class TProductController {
     public Boolean updateProductStock(@RequestBody Map<Long, Integer> updateMap){
         return productService.updateProductStock(updateMap);
     }
+
+    /**
+     * 主页推广
+     * @return
+     */
+    @GetMapping("/promotion")
+    public Result promotion() throws IOException {
+        return productService.promotion();
+    }
+
+    /**
+     * 查询分类下的所有
+     * @return
+     * @throws IOException
+     */
+    @GetMapping("/queryAllProductByCategoryId/{id}")
+    public Result queryAllProductByCategoryId(@PathVariable Integer id){
+        return productService.queryAllProductByCategoryId(id);
+    }
+
+    /**
+     * 查询基分类下的所有商品
+     * @return
+     */
+    @GetMapping("/queryInitialProduct")
+    public Result queryInitialProduct(@RequestParam(required = false, defaultValue = "1") Integer pageNum,
+                                      @RequestParam(required = false, defaultValue = "20") Integer pageSize,
+                                      @RequestParam int categoryId){
+        return productService.queryInitialProduct(pageNum, pageSize, categoryId);
+    }
+
 }

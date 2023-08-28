@@ -12,11 +12,11 @@ spring:
         - id: mall-user-service #路由标识，必须唯一
           uri: lb://mallUserService #路由的目标地址
           predicates: #路径断言，判断请求是否符合规则
-            - Path=/user/** #路径断言
+            - Path=/user/**, /active/** #路径断言
         - id: mall-product-service
           uri: lb://mallProductService
           predicates:
-            - Path=/category/**, /product/**, /comment/**
+            - Path=/category/**, /product/**, /comment/**,/advertise/**
         - id: mall-uploadImage-service
           uri: lb://mallUploadService
           predicates:

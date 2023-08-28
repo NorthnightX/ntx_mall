@@ -15,11 +15,11 @@
       <jdbc-url>mongodb://8.140.17.235:27017</jdbc-url>
       <working-dir>$ProjectFileDir$</working-dir>
     </data-source>
-    <data-source source="LOCAL" name="n_mall_order@localhost" uuid="dea30a9b-b5e2-4b6d-a0d2-7bb27f671306">
+    <data-source source="LOCAL" name="n_mall_product@localhost" uuid="dea30a9b-b5e2-4b6d-a0d2-7bb27f671306">
       <driver-ref>mysql.8</driver-ref>
       <synchronize>true</synchronize>
       <jdbc-driver>com.mysql.cj.jdbc.Driver</jdbc-driver>
-      <jdbc-url>jdbc:mysql://localhost:3306/n_mall_order</jdbc-url>
+      <jdbc-url>jdbc:mysql://localhost:3306/n_mall_product</jdbc-url>
       <working-dir>$ProjectFileDir$</working-dir>
     </data-source>
   </component>

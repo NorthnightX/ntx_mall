@@ -38,4 +38,11 @@ public interface TProductService extends IService<TProduct> {
     List<TProduct> getProductList(List<Long> productIdList);
 
     Boolean updateProductStock(Map<Long, Integer> updateMap);
+
+    Result promotion() throws IOException;
+
+
+    Result queryAllProductByCategoryId(Integer id);
+
+    Result queryInitialProduct(Integer pageNum, Integer pageSize, int categoryId);
 }

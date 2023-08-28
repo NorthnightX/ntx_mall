@@ -17,7 +17,19 @@
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     </properties>
 
-    <dependencies>
+    <dependencies>        <!--        spring-kafka-->
+        <dependency>
+            <groupId>org.springframework.kafka</groupId>
+            <artifactId>spring-kafka</artifactId>
+            <version>2.7.3</version> <!-- 替换为您需要的版本号 -->
+        </dependency>
+        <!-- Kafka Clients -->
+        <dependency>
+            <groupId>org.apache.kafka</groupId>
+            <artifactId>kafka-clients</artifactId>
+            <version>2.8.0</version> <!-- 替换为您需要的版本号 -->
+        </dependency>
+
         <dependency>
             <groupId>com.ntx</groupId>
             <artifactId>mall_common</artifactId>

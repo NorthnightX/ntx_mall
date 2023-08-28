@@ -8,12 +8,14 @@ import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.ntx.mallcommon.domain.Result;
 import com.ntx.mallcommon.domain.TCategory;
 import com.ntx.mallcommon.domain.TProduct;
+import com.ntx.mallcommon.domain.UserActive;
+import com.ntx.mallproduct.DTO.CategoryDTO;
 import com.ntx.mallproduct.DTO.CustomException;
 import com.ntx.mallproduct.DTO.ProductDTO;
+import com.ntx.mallproduct.DTO.UserHolder;
 import com.ntx.mallproduct.mapper.TProductMapper;
 import com.ntx.mallproduct.service.TCategoryService;
 import com.ntx.mallproduct.service.TProductService;
-
 import org.apache.lucene.search.TotalHits;
 import org.elasticsearch.action.index.IndexRequest;
 import org.elasticsearch.action.search.SearchRequest;
@@ -33,6 +35,7 @@ import org.springframework.data.mongodb.core.query.Criteria;
 import org.springframework.data.mongodb.core.query.Query;
 import org.springframework.data.mongodb.core.query.Update;
 import org.springframework.data.redis.core.StringRedisTemplate;
+import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -48,13 +51,13 @@ import java.util.stream.Collectors;
 import static com.ntx.mallproduct.common.SystemConstant.*;
 
 /**
-* @author NorthnightX
-* @description 针对表【t_product】的数据库操作Service实现
-* @createDate 2023-08-21 21:54:43
-*/
+ * @author NorthnightX
+ * @description 针对表【t_product】的数据库操作Service实现
+ * @createDate 2023-08-21 21:54:43
+ */
 @Service
 public class TProductServiceImpl extends ServiceImpl<TProductMapper, TProduct>
-    implements TProductService {
+        implements TProductService {
     @Autowired
     private TCategoryService categoryService;
     @Autowired
@@ -63,11 +66,14 @@ public class TProductServiceImpl extends ServiceImpl<TProductMapper, TProduct>
     private RestHighLevelClient client;
     @Autowired
     private StringRedisTemplate stringRedisTemplate;
+    @Autowired
+    private KafkaTemplate<String, String> kafkaTemplate;
 //    @Autowired
 //    private KafkaTemplate<String, String> kafkaTemplate;
 
     /**
      * 商品列表查询
+     *
      * @param pageNum
      * @param pageSize
      * @param productName
@@ -80,17 +86,18 @@ public class TProductServiceImpl extends ServiceImpl<TProductMapper, TProduct>
         Query query = new Query();
         long countMongo = mongoTemplate.count(query, ProductDTO.class);
         //如果mongoDB中有数据
-        if(countMongo > 0){
-            pageInfo.setTotal(countMongo);
-            if(productName != null && productName.length() > 0){
+        if (countMongo > 0) {
+            if (productName != null && productName.length() > 0) {
                 query.addCriteria(Criteria.where("name").regex(productName, "i"));
             }
-            if(categoryId != null){
+            if (categoryId != null) {
                 query.addCriteria(Criteria.where("categoryId").is(categoryId));
             }
+            long count = mongoTemplate.count(query, ProductDTO.class);
             query.skip((long) (pageNum - 1) * pageSize).limit(pageSize);
             List<ProductDTO> productDTOS = mongoTemplate.find(query, ProductDTO.class);
             pageInfo.setRecords(productDTOS);
+            pageInfo.setTotal(count);
             return Result.success(pageInfo);
         }
         LambdaQueryWrapper<TProduct> queryWrapper = new LambdaQueryWrapper<>();
@@ -98,7 +105,7 @@ public class TProductServiceImpl extends ServiceImpl<TProductMapper, TProduct>
                 TProduct::getName, productName);
         queryWrapper.eq(categoryId != null, TProduct::getCategoryId, categoryId);
         int count = this.count(queryWrapper);
-        queryWrapper.last("LIMIT " + (pageNum - 1) *  pageSize+ ", " + pageSize);
+        queryWrapper.last("LIMIT " + (pageNum - 1) * pageSize + ", " + pageSize);
         List<TProduct> list = this.list(queryWrapper);
         List<ProductDTO> productDTOList = list.stream().map(tProduct -> {
             ProductDTO productDTO = new ProductDTO();
@@ -116,13 +123,14 @@ public class TProductServiceImpl extends ServiceImpl<TProductMapper, TProduct>
 
     /**
      * 修改状态
+     *
      * @param product
      * @return
      */
     @Override
     public Result updateProductStatus(TProduct product) throws IOException {
         //牵扯较多
-        if(true){
+        if (true) {
             return Result.error("权限不够");
         }
 
@@ -145,13 +153,14 @@ public class TProductServiceImpl extends ServiceImpl<TProductMapper, TProduct>
 
     /**
      * 删除 !!!!!!!
+     *
      * @param id
      * @return
      */
     @Override
     public Result deleteProduct(Integer id) {
         //暂停使用
-        if(true){
+        if (true) {
             return Result.error("权限不够");
         }
 
@@ -164,13 +173,14 @@ public class TProductServiceImpl extends ServiceImpl<TProductMapper, TProduct>
 
     /**
      * 更新商品
+     *
      * @param productDTO
      * @return
      */
     @Override
     public Result updateProduct(ProductDTO productDTO) throws IOException {
         //牵扯较多
-        if(true){
+        if (true) {
             return Result.error("权限不够");
         }
         TProduct product = new TProduct();
@@ -178,7 +188,7 @@ public class TProductServiceImpl extends ServiceImpl<TProductMapper, TProduct>
         BeanUtil.copyProperties(productDTO, product);
         String subImages = product.getSubImages();
         List list = JSON.parseObject(subImages, List.class);
-        if(list.size() == 0){
+        if (list.size() == 0) {
             return Result.error("至少要设置一张商品图片");
         }
         product.setMainImage((String) list.get(0));
@@ -207,6 +217,7 @@ public class TProductServiceImpl extends ServiceImpl<TProductMapper, TProduct>
 
     /**
      * 新增商品,有时连接不上ES的话可能会多次添加!!!!
+     *
      * @param product
      * @return
      */
@@ -217,24 +228,27 @@ public class TProductServiceImpl extends ServiceImpl<TProductMapper, TProduct>
         product.setDeleted(ADD_PRODUCT_DELETED);
         product.setStatus(ADD_PRODUCT_STATUS);
         String productName = product.getName();
-        if(productName == null || productName.length() == 0){
+        if (productName == null || productName.length() == 0) {
             return Result.error("请输入商品名");
         }
         BigDecimal price = product.getPrice();
-        if(price == null || price.compareTo(BigDecimal.ZERO) < 0){
+        if (price == null || price.compareTo(BigDecimal.ZERO) < 0) {
             return Result.error("请设置正常的商品价格");
         }
         Long categoryId = product.getCategoryId();
-        if(categoryId == null){
+        if (categoryId == null) {
             return Result.error("请选择分类");
         }
         TCategory category = categoryService.getById(categoryId);
-        if(category == null){
+        if (category == null) {
             return Result.error("请选择存在的分类");
+        }
+        if(category.getParentId() == 0){
+            return Result.error("不能选择基分类");
         }
         String subImages = product.getSubImages();
         List list = JSON.parseObject(subImages, List.class);
-        if(list.size() == 0){
+        if (list.size() == 0) {
             return Result.error("至少要设置一张商品图片");
         }
         product.setMainImage((String) list.get(0));
@@ -251,6 +265,7 @@ public class TProductServiceImpl extends ServiceImpl<TProductMapper, TProduct>
 
     /**
      * 根据分类id推荐商品
+     *
      * @param id
      * @return
      */
@@ -261,9 +276,10 @@ public class TProductServiceImpl extends ServiceImpl<TProductMapper, TProduct>
         //根据销量倒序
         query.with(Sort.by(Sort.Direction.DESC, "saleCount")).limit(20);
         List<ProductDTO> productDTOS = mongoTemplate.find(query, ProductDTO.class);
-        if(productDTOS.size() > 0){
+        if (productDTOS.size() > 0) {
             return Result.success(productDTOS);
         }
+        //分页？？？
         LambdaQueryWrapper<TProduct> queryWrapper = new LambdaQueryWrapper<>();
         queryWrapper.eq(TProduct::getCategoryId, id);
         List<TProduct> list = this.list(queryWrapper);
@@ -281,6 +297,7 @@ public class TProductServiceImpl extends ServiceImpl<TProductMapper, TProduct>
 
     /**
      * 根据关键字查询
+     *
      * @param keyword
      * @return
      */
@@ -288,12 +305,11 @@ public class TProductServiceImpl extends ServiceImpl<TProductMapper, TProduct>
     public Result queryByKeyWord(Integer pageNum, Integer pageSize, String keyword) throws IOException {
         SearchRequest request = new SearchRequest("product");
         BoolQueryBuilder boolQueryBuilder = new BoolQueryBuilder();
-        if(keyword.length() == 0){
+        if (keyword.length() == 0) {
             boolQueryBuilder.
                     must(QueryBuilders.termQuery("status", 1)).
                     must(QueryBuilders.termQuery("deleted", 1));
-        }
-        else {
+        } else {
             boolQueryBuilder.must(QueryBuilders.matchQuery("text", keyword)).
                     must(QueryBuilders.termQuery("status", 1)).
                     must(QueryBuilders.termQuery("deleted", 1));
@@ -319,6 +335,7 @@ public class TProductServiceImpl extends ServiceImpl<TProductMapper, TProduct>
 
     /**
      * 默认推荐产品,销量前20的商品
+     *
      * @return
      */
     @Override
@@ -326,7 +343,7 @@ public class TProductServiceImpl extends ServiceImpl<TProductMapper, TProduct>
         Query query = new Query();
         query.limit(20).with(Sort.by(Sort.Direction.DESC, "saleCount"));
         List<ProductDTO> productDTOS = mongoTemplate.find(query, ProductDTO.class);
-        if(productDTOS.size() != 0){
+        if (productDTOS.size() != 0) {
             return Result.success(productDTOS);
         }
         LambdaQueryWrapper<TProduct> queryWrapper = new LambdaQueryWrapper<>();
@@ -347,6 +364,7 @@ public class TProductServiceImpl extends ServiceImpl<TProductMapper, TProduct>
 
     /**
      * 查询指定商品
+     *
      * @param id
      * @return
      */
@@ -355,14 +373,21 @@ public class TProductServiceImpl extends ServiceImpl<TProductMapper, TProduct>
         Query query = new Query();
         query.addCriteria(Criteria.where("_id").is(id));
         ProductDTO productDTO = mongoTemplate.findOne(query, ProductDTO.class);
-        if(productDTO == null || productDTO.getStatus() == 0 || productDTO.getDeleted() == 0){
+        if (productDTO == null || productDTO.getStatus() == 0 || productDTO.getDeleted() == 0) {
             return Result.error("该商品已下架");
         }
+        UserActive userActive = new UserActive();
+        userActive.setProductId(id);
+        userActive.setUserId(Math.toIntExact(UserHolder.getUser().getId()));
+        userActive.setCategoryId(productDTO.getCategoryId());
+        userActive.setGmtCreate(LocalDateTime.now());
+        kafkaTemplate.send("userBehavior", "", JSON.toJSONString(userActive));
         return Result.success(productDTO);
     }
 
     /**
      * 获取用户购物车的商品信息
+     *
      * @param productIdList
      * @return
      */
@@ -379,6 +404,7 @@ public class TProductServiceImpl extends ServiceImpl<TProductMapper, TProduct>
 
     /**
      * 更新库存,增加销量
+     *
      * @param updateMap
      * @return
      */
@@ -409,7 +435,7 @@ public class TProductServiceImpl extends ServiceImpl<TProductMapper, TProduct>
                         mongoTemplate.updateFirst(query, updateMongoD, ProductDTO.class);
                         //更新ES
                         UpdateRequest updateRequest = new UpdateRequest("product", productId.toString());
-                        updateRequest.doc("stock",newStock, "saleCount", saleCount);
+                        updateRequest.doc("stock", newStock, "saleCount", saleCount);
                         try {
                             client.update(updateRequest, RequestOptions.DEFAULT);
                         } catch (IOException e) {
@@ -435,6 +461,67 @@ public class TProductServiceImpl extends ServiceImpl<TProductMapper, TProduct>
             }
         });
         return success.get();
+    }
+
+    @Override
+    public Result promotion() throws IOException {
+        SearchRequest request = new SearchRequest("product");
+        BoolQueryBuilder boolQueryBuilder = new BoolQueryBuilder();
+        boolQueryBuilder.
+                must(QueryBuilders.termQuery("status", 1)).
+                must(QueryBuilders.termQuery("deleted", 1));
+        request.source().query(boolQueryBuilder);
+        request.source().sort("gmtCreate", SortOrder.DESC);
+        request.source().size(4);
+        SearchResponse response = client.search(request, RequestOptions.DEFAULT);
+        SearchHit[] hits = response.getHits().getHits();
+        List<ProductDTO> list = new ArrayList<>();
+        for (SearchHit hit : hits) {
+            String sourceAsString = hit.getSourceAsString();
+            ProductDTO productDTO = JSON.parseObject(sourceAsString, ProductDTO.class);
+            list.add(productDTO);
+        }
+        return Result.success(list);
+    }
+
+    /**
+     * 查询分类下的所有产品
+     * @param id
+     * @return
+     */
+    @Override
+    public Result queryAllProductByCategoryId(Integer id) {
+        Query query = new Query();
+        query.addCriteria(Criteria.where("categoryId").is(id));
+        //根据销量倒序
+        query.with(Sort.by(Sort.Direction.DESC, "saleCount"));
+        List<ProductDTO> productDTOS = mongoTemplate.find(query, ProductDTO.class);
+        return Result.success(productDTOS);
+    }
+
+    /**
+     * 查询基分类下的所有商品
+     * @param pageNum
+     * @param pageSize
+     * @param categoryId
+     * @return
+     */
+    @Override
+    public Result queryInitialProduct(Integer pageNum, Integer pageSize, int categoryId) {
+        Page<ProductDTO> page = new Page<>(pageNum, pageSize);
+        Query query = new Query();
+        query.addCriteria(Criteria.where("parentId").is(categoryId));
+        List<CategoryDTO> categoryDTOS = mongoTemplate.find(query, CategoryDTO.class);
+        List<Long> categoryChildIdList = categoryDTOS.stream().map(CategoryDTO::getId).collect(Collectors.toList());
+        Query queryProduct = new Query();
+        queryProduct.addCriteria(Criteria.where("categoryId").in(categoryChildIdList));
+        long count = mongoTemplate.count(queryProduct, ProductDTO.class);
+        page.setTotal(count);
+        queryProduct.limit(pageSize).skip((long) (pageNum - 1) * pageSize);
+        queryProduct.with(Sort.by(Sort.Direction.DESC, "saleCount"));
+        List<ProductDTO> productDTOS = mongoTemplate.find(queryProduct, ProductDTO.class);
+        page.setRecords(productDTOS);
+        return Result.success(page);
     }
 }
 

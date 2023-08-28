@@ -3,6 +3,7 @@ package com.ntx.malluser.config;
 import com.alibaba.fastjson.JSON;
 import com.ntx.mallcommon.domain.TUser;
 import com.ntx.mallcommon.utils.JwtUtils;
+
 import com.ntx.malluser.pojo.DTO.UserHolder;
 import org.springframework.web.servlet.HandlerInterceptor;
 

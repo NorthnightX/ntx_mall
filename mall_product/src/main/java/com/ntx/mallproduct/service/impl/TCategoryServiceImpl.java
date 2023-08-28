@@ -58,15 +58,16 @@ public class TCategoryServiceImpl extends ServiceImpl<TCategoryMapper, TCategory
             if(parentId != null){
                 query.addCriteria(Criteria.where("parentId").is(parentId));
             }
+            long count = mongoTemplate.count(query, CategoryDTO.class);
             query.skip((long) (pageNum - 1) * pageSize).limit(pageSize);
             List<CategoryDTO> categoryDTOS = mongoTemplate.find(query, CategoryDTO.class);
             if(categoryDTOS.size() > 0){
                 pageInfo.setRecords(categoryDTOS);
-                pageInfo.setTotal(counted);
+                pageInfo.setTotal(count);
                 return Result.success(pageInfo);
             }
         }
-        //mongoDB没有，搜索数据库
+        //mongoDB没有，搜索数据库 ???
         LambdaQueryWrapper<TCategory> queryWrapper = new LambdaQueryWrapper<>();
         queryWrapper.like(name != null && name.length() > 0, TCategory::getName, name);
         queryWrapper.eq(parentId != null, TCategory::getParentId, parentId);
