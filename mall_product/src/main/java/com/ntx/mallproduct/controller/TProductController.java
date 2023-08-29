@@ -141,7 +141,7 @@ public class TProductController {
      * @return
      */
     @PostMapping("/updateProductStock")
-    public Boolean updateProductStock(@RequestBody Map<Long, Integer> updateMap){
+    public Boolean updateProductStock(@RequestBody Map<Long, Integer> updateMap) throws Exception {
         return productService.updateProductStock(updateMap);
     }
 

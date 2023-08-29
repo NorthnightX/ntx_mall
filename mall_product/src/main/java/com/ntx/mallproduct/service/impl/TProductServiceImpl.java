@@ -13,9 +13,12 @@ import com.ntx.mallproduct.DTO.CategoryDTO;
 import com.ntx.mallproduct.DTO.CustomException;
 import com.ntx.mallproduct.DTO.ProductDTO;
 import com.ntx.mallproduct.DTO.UserHolder;
+import com.ntx.mallproduct.config.CuratorConfig;
 import com.ntx.mallproduct.mapper.TProductMapper;
 import com.ntx.mallproduct.service.TCategoryService;
 import com.ntx.mallproduct.service.TProductService;
+import org.apache.curator.framework.CuratorFramework;
+import org.apache.curator.framework.recipes.locks.InterProcessMutex;
 import org.apache.lucene.search.TotalHits;
 import org.elasticsearch.action.index.IndexRequest;
 import org.elasticsearch.action.search.SearchRequest;
@@ -68,8 +71,8 @@ public class TProductServiceImpl extends ServiceImpl<TProductMapper, TProduct>
     private StringRedisTemplate stringRedisTemplate;
     @Autowired
     private KafkaTemplate<String, String> kafkaTemplate;
-//    @Autowired
-//    private KafkaTemplate<String, String> kafkaTemplate;
+    @Autowired
+    private CuratorFramework curatorClient;
 
     /**
      * 商品列表查询
@@ -414,16 +417,18 @@ public class TProductServiceImpl extends ServiceImpl<TProductMapper, TProduct>
      */
     @Override
     @Transactional(rollbackFor = CustomException.class)
-    public Boolean updateProductStock(Map<Long, Integer> updateMap) {
+    public Boolean updateProductStock(Map<Long, Integer> updateMap) throws Exception {
         AtomicReference<Boolean> success = new AtomicReference<>(true);
-        updateMap.forEach((productId, quantity) -> {
-            int retryCount = 3;
-            while (retryCount > 0) {
+        //使用zookeeper的分布式锁
+        InterProcessMutex lock = new InterProcessMutex(curatorClient, "/lock");
+        try {
+            lock.acquire();
+            updateMap.forEach((productId, quantity) -> {
                 TProduct product = this.getById(productId);
                 int stock = product.getStock();
                 int saleCount = product.getSaleCount();
                 int newStock = stock - quantity;
-                if (stock - quantity > 0) {
+                if (stock - quantity >= 0) {
                     boolean update = this.update()
                             .set("stock", newStock)
                             .eq("stock", stock)
@@ -446,26 +451,21 @@ public class TProductServiceImpl extends ServiceImpl<TProductMapper, TProduct>
                         } catch (IOException e) {
                             throw new RuntimeException(e);
                         }
-                        break;
                     } else {
-                        retryCount--;
-                        if (retryCount == 0) {
-                            success.set(false);
-                            throw new CustomException("更新失败");
-                        }
-                        try {
-                            Thread.sleep(50);
-                        } catch (InterruptedException e) {
-                            throw new RuntimeException(e);
-                        }
+                        success.set(false);
+                        throw new CustomException("更新失败");
                     }
-                } else {
-                    success.set(false);
-                    throw new CustomException("库存不足");
                 }
-            }
-        });
-        return success.get();
+                else {
+                    success.set(false);
+                }
+            });
+            return success.get();
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        } finally {
+            lock.release();
+        }
     }
 
     @Override

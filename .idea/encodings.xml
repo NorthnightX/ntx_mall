@@ -18,6 +18,8 @@
     <file url="file://$PROJECT_DIR$/mall_user/src/main/java" charset="UTF-8" />
     <file url="file://$PROJECT_DIR$/mall_voucher/src/main/java" charset="UTF-8" />
     <file url="file://$PROJECT_DIR$/ntx_gateway/src/main/java" charset="UTF-8" />
+    <file url="file://$PROJECT_DIR$/src/main/java" charset="UTF-8" />
+    <file url="file://$PROJECT_DIR$/src/main/resources" charset="UTF-8" />
     <file url="file://$PROJECT_DIR$/uploadImage/src/main/java" charset="UTF-8" />
   </component>
 </project>

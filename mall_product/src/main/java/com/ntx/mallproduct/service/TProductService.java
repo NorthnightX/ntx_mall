@@ -37,7 +37,7 @@ public interface TProductService extends IService<TProduct> {
 
     List<TProduct> getProductList(List<Long> productIdList);
 
-    Boolean updateProductStock(Map<Long, Integer> updateMap);
+    Boolean updateProductStock(Map<Long, Integer> updateMap) throws Exception;
 
     Result promotion() throws IOException;
 

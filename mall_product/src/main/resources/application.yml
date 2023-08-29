@@ -77,4 +77,3 @@ feign:
         readTimeout: 600000
   hystrix:
     enabled: false    # 不要开启hystrix，会导致超时配置不生效
-
