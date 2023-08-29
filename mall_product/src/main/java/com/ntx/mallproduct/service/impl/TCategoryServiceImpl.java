@@ -137,6 +137,7 @@ public class TCategoryServiceImpl extends ServiceImpl<TCategoryMapper, TCategory
             Query queryCategory = new Query();
             queryCategory.addCriteria(Criteria.where("parentId").is(id));
             queryCategory.addCriteria(Criteria.where("status").is(1));
+            queryCategory.addCriteria(Criteria.where("deleted").is(1));
             CategoryDTO one = mongoTemplate.findOne(queryCategory, CategoryDTO.class);
             if(one != null){
                 return Result.error("该分类下还有分类未处理");
@@ -144,6 +145,7 @@ public class TCategoryServiceImpl extends ServiceImpl<TCategoryMapper, TCategory
             Query queryProduct = new Query();
             queryProduct.addCriteria(Criteria.where("categoryId").is(id));
             queryProduct.addCriteria(Criteria.where("status").is(1));
+            queryProduct.addCriteria(Criteria.where("deleted").is(1));
             ProductDTO productDTO = mongoTemplate.findOne(queryProduct, ProductDTO.class);
             if(productDTO != null){
                 return Result.error("该分类下还有产品未处理");
@@ -178,6 +180,7 @@ public class TCategoryServiceImpl extends ServiceImpl<TCategoryMapper, TCategory
         Query queryCategory = new Query();
         queryCategory.addCriteria(Criteria.where("parentId").is(id));
         queryCategory.addCriteria(Criteria.where("status").is(1));
+        queryCategory.addCriteria(Criteria.where("deleted").is(1));
         CategoryDTO one = mongoTemplate.findOne(queryCategory, CategoryDTO.class);
         if(one != null){
             return Result.error("该分类下还有分类未处理");
@@ -185,6 +188,7 @@ public class TCategoryServiceImpl extends ServiceImpl<TCategoryMapper, TCategory
         Query queryProduct = new Query();
         queryProduct.addCriteria(Criteria.where("categoryId").is(id));
         queryProduct.addCriteria(Criteria.where("status").is(1));
+        queryProduct.addCriteria(Criteria.where("deleted").is(1));
         ProductDTO productDTO = mongoTemplate.findOne(queryProduct, ProductDTO.class);
         if(productDTO != null){
             return Result.error("该分类下还有产品未处理");
@@ -212,6 +216,7 @@ public class TCategoryServiceImpl extends ServiceImpl<TCategoryMapper, TCategory
     public Result deleteCategory(Integer id) {
         LambdaQueryWrapper<TProduct> queryWrapper = new LambdaQueryWrapper<>();
         queryWrapper.eq(TProduct::getCategoryId, id);
+        queryWrapper.eq(TProduct::getDeleted, 1);
         queryWrapper.last("LIMIT 1");
         TProduct isAbsent = productService.getOne(queryWrapper);
         if(isAbsent != null){
@@ -219,6 +224,7 @@ public class TCategoryServiceImpl extends ServiceImpl<TCategoryMapper, TCategory
         }
         LambdaQueryWrapper<TCategory> queryWrapperCategory = new LambdaQueryWrapper<>();
         queryWrapperCategory.eq(TCategory::getParentId, id);
+        queryWrapperCategory.eq(TCategory::getDeleted, 1);
         queryWrapperCategory.last("LIMIT 1");
         TCategory category = this.getOne(queryWrapperCategory);
         if(category != null){
