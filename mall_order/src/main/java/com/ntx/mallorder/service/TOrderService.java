@@ -13,4 +13,5 @@ import com.ntx.mallcommon.domain.TOrder;
 public interface TOrderService extends IService<TOrder> {
 
     Result payOrder(TOrder order);
+    ;
 }

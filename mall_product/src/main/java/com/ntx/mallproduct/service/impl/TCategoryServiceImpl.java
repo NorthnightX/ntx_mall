@@ -23,6 +23,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -73,30 +74,7 @@ public class TCategoryServiceImpl extends ServiceImpl<TCategoryMapper, TCategory
                 return Result.success(pageInfo);
             }
         }
-        //mongoDB没有，搜索数据库 ???
-        LambdaQueryWrapper<TCategory> queryWrapper = new LambdaQueryWrapper<>();
-        queryWrapper.like(name != null && name.length() > 0, TCategory::getName, name);
-        queryWrapper.eq(parentId != null, TCategory::getParentId, parentId);
-        int count = this.count(queryWrapper);
-        queryWrapper.last("LIMIT " + (pageNum - 1) *  pageSize+ ", " + pageSize);
-        List<TCategory> list = this.list(queryWrapper);
-        List<CategoryDTO> categoryDTOList = list.stream().map(tCategory -> {
-            CategoryDTO categoryDTO = new CategoryDTO();
-            BeanUtil.copyProperties(tCategory, categoryDTO);
-            Long parentCategoryId = tCategory.getParentId();
-            if (parentCategoryId == 0) {
-                categoryDTO.setParentName(categoryDTO.getName());
-            }
-            else{
-                TCategory category = this.getById(parentCategoryId);
-                categoryDTO.setParentName(category.getName());
-            }
-            mongoTemplate.save(categoryDTO);
-            return categoryDTO;
-        }).collect(Collectors.toList());
-        pageInfo.setTotal(count);
-        pageInfo.setRecords(categoryDTOList);
-        return Result.success(pageInfo);
+        return Result.success(new ArrayList<>());
     }
 
     /**
@@ -109,20 +87,7 @@ public class TCategoryServiceImpl extends ServiceImpl<TCategoryMapper, TCategory
         Query query = new Query();
         query.addCriteria(Criteria.where("parentId").is(0));
         List<CategoryDTO> categoryDTOS = mongoTemplate.find(query, CategoryDTO.class);
-        if(categoryDTOS.size() > 0){
-            return Result.success(categoryDTOS);
-        }
-        LambdaQueryWrapper<TCategory> queryWrapper = new LambdaQueryWrapper<>();
-        queryWrapper.eq(TCategory::getParentId, INITIAL_CATEGORY);
-        List<TCategory> list = this.list(queryWrapper);
-        List<CategoryDTO> categoryDTOList = list.stream().map(category -> {
-            CategoryDTO categoryDTO = new CategoryDTO();
-            BeanUtil.copyProperties(category, categoryDTO);
-            categoryDTO.setParentName(category.getName());
-            mongoTemplate.save(categoryDTO);
-            return categoryDTO;
-        }).collect(Collectors.toList());
-        return Result.success(categoryDTOList);
+        return Result.success(categoryDTOS);
     }
 
     /**
@@ -281,27 +246,11 @@ public class TCategoryServiceImpl extends ServiceImpl<TCategoryMapper, TCategory
     public Result getAllCategory() {
         //先查mongoDB
         Query query = new Query();
+        query.addCriteria(Criteria.where("parentId").ne(0));
+        query.addCriteria(Criteria.where("status").is(1));
         List<CategoryDTO> categoryDTOS = mongoTemplate.find(query, CategoryDTO.class);
-        //如果mongoDB有
-        if(categoryDTOS.size() > 0){
-            return Result.success(categoryDTOS);
-        }
-        //查询数据库
-        List<TCategory> list = this.list();
-        List<CategoryDTO> categoryDTOList = list.stream().map(category -> {
-            CategoryDTO categoryDTO = new CategoryDTO();
-            BeanUtil.copyProperties(category, categoryDTO);
-            Long parentId = categoryDTO.getParentId();
-            if (parentId == 0) {
-                categoryDTO.setParentName(category.getName());
-            } else {
-                TCategory category1 = this.getById(categoryDTO.getParentId());
-                categoryDTO.setParentName(category1.getName());
-            }
-            mongoTemplate.save(categoryDTO);
-            return categoryDTO;
-        }).collect(Collectors.toList());
-        return Result.success(categoryDTOList);
+        return Result.success(categoryDTOS);
+
     }
 
     /**

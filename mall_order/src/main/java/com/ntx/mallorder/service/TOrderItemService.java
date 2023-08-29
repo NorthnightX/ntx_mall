@@ -11,4 +11,5 @@ import com.ntx.mallcommon.domain.TOrderItem;
 */
 public interface TOrderItemService extends IService<TOrderItem> {
 
+    Boolean getOrderByProduct(int id);
 }

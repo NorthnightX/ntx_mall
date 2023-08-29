@@ -52,7 +52,7 @@ public class TProductController {
      * @return
      */
     @DeleteMapping("/deleteProduct")
-    public Result deleteCategory(@RequestParam Integer id){
+    public Result deleteCategory(@RequestParam Integer id) throws IOException {
         return productService.deleteProduct(id);
     }
 
@@ -146,7 +146,7 @@ public class TProductController {
     }
 
     /**
-     * 主页推广
+     * 主页推广 目前没用
      * @return
      */
     @GetMapping("/promotion")

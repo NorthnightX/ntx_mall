@@ -9,6 +9,7 @@ import com.ntx.mallcommon.domain.Result;
 import com.ntx.mallcommon.domain.TCategory;
 import com.ntx.mallcommon.domain.TProduct;
 import com.ntx.mallcommon.domain.UserActive;
+import com.ntx.mallcommon.feign.OrderClient;
 import com.ntx.mallproduct.DTO.CategoryDTO;
 import com.ntx.mallproduct.DTO.CustomException;
 import com.ntx.mallproduct.DTO.ProductDTO;
@@ -20,6 +21,7 @@ import com.ntx.mallproduct.service.TProductService;
 import org.apache.curator.framework.CuratorFramework;
 import org.apache.curator.framework.recipes.locks.InterProcessMutex;
 import org.apache.lucene.search.TotalHits;
+import org.elasticsearch.action.delete.DeleteRequest;
 import org.elasticsearch.action.index.IndexRequest;
 import org.elasticsearch.action.search.SearchRequest;
 import org.elasticsearch.action.search.SearchResponse;
@@ -73,6 +75,8 @@ public class TProductServiceImpl extends ServiceImpl<TProductMapper, TProduct>
     private KafkaTemplate<String, String> kafkaTemplate;
     @Autowired
     private CuratorFramework curatorClient;
+    @Autowired
+    private OrderClient orderClient;
 
     /**
      * 商品列表查询
@@ -103,24 +107,7 @@ public class TProductServiceImpl extends ServiceImpl<TProductMapper, TProduct>
             pageInfo.setTotal(count);
             return Result.success(pageInfo);
         }
-        LambdaQueryWrapper<TProduct> queryWrapper = new LambdaQueryWrapper<>();
-        queryWrapper.like(productName != null && productName.length() > 0,
-                TProduct::getName, productName);
-        queryWrapper.eq(categoryId != null, TProduct::getCategoryId, categoryId);
-        int count = this.count(queryWrapper);
-        queryWrapper.last("LIMIT " + (pageNum - 1) * pageSize + ", " + pageSize);
-        List<TProduct> list = this.list(queryWrapper);
-        List<ProductDTO> productDTOList = list.stream().map(tProduct -> {
-            ProductDTO productDTO = new ProductDTO();
-            BeanUtil.copyProperties(tProduct, productDTO);
-            TCategory category = categoryService.getById(productDTO.getCategoryId());
-            productDTO.setCategoryName(category.getName());
-            //保存到MongoDB
-            mongoTemplate.save(productDTO);
-            return productDTO;
-        }).collect(Collectors.toList());
-        pageInfo.setTotal(count);
-        pageInfo.setRecords(productDTOList);
+        pageInfo.setTotal(0);
         return Result.success(pageInfo);
     }
 
@@ -132,11 +119,8 @@ public class TProductServiceImpl extends ServiceImpl<TProductMapper, TProduct>
      */
     @Override
     public Result updateProductStatus(TProduct product) throws IOException {
-        //牵扯较多
-
-
-        Integer status = product.getStatus();
         Long id = product.getId();
+        Integer status = product.getStatus();
         boolean update = this.update()
                 .eq("id", id).set("status", status)
                 .set("gmt_modified", LocalDateTime.now()).update();
@@ -153,32 +137,38 @@ public class TProductServiceImpl extends ServiceImpl<TProductMapper, TProduct>
     }
 
     /**
-     * 删除 !!!!!!!
-     *
+     * 删除
      * @param id
      * @return
      */
     @Override
-    public Result deleteProduct(Integer id) {
+    public Result deleteProduct(Integer id) throws IOException {
         //暂停使用
-
-        boolean update = this.update().
+        Boolean order = orderClient.getOrder(id);
+        if(!order){
+            return Result.error("该商品下有订单存在");
+        }
+        this.update().
                 eq("id", id).set("deleted", DELETED_PRODUCT)
                 .set("gmt_modified", LocalDateTime.now()).
                 update();
-        return update ? Result.success("删除成功") : Result.error("网络异常");
+        //删除mongoDB
+        Query query = new Query();
+        query.addCriteria(Criteria.where("_id").is(id));
+        mongoTemplate.remove(query, ProductDTO.class);
+        //删除ES
+        DeleteRequest deleteRequest = new DeleteRequest("product", id.toString());
+        client.delete(deleteRequest, RequestOptions.DEFAULT);
+        return Result.success("删除成功");
     }
 
     /**
      * 更新商品
-     *
      * @param productDTO
      * @return
      */
     @Override
     public Result updateProduct(ProductDTO productDTO) throws IOException {
-        //牵扯较多
-
         TProduct product = new TProduct();
         productDTO.setGmtModified(LocalDateTime.now());
         BeanUtil.copyProperties(productDTO, product);
@@ -188,10 +178,13 @@ public class TProductServiceImpl extends ServiceImpl<TProductMapper, TProduct>
             return Result.error("至少要设置一张商品图片");
         }
         product.setMainImage((String) list.get(0));
-        boolean update = this.updateById(product);
         //用户可能会更新分类
         Long categoryId = productDTO.getCategoryId();
         TCategory category = categoryService.getById(categoryId);
+        if(category.getStatus() == 0 || category.getDeleted() == 0){
+            return Result.error("不要设置已经下架的分类");
+        }
+        boolean update = this.updateById(product);
         productDTO.setCategoryName(category.getName());
         mongoTemplate.save(productDTO);
         UpdateRequest updateRequest = new UpdateRequest("product", String.valueOf(productDTO.getId()));
@@ -212,7 +205,7 @@ public class TProductServiceImpl extends ServiceImpl<TProductMapper, TProduct>
     }
 
     /**
-     * 新增商品,有时连接不上ES的话可能会多次添加!!!!
+     * 新增商品
      *
      * @param product
      * @return
@@ -241,6 +234,9 @@ public class TProductServiceImpl extends ServiceImpl<TProductMapper, TProduct>
         }
         if(category.getParentId() == 0){
             return Result.error("不能选择基分类");
+        }
+        if(category.getDeleted() == 0 || category.getStatus() == 0){
+            return Result.error("不要选择已经下架的分类");
         }
         String subImages = product.getSubImages();
         List list = JSON.parseObject(subImages, List.class);
@@ -275,24 +271,12 @@ public class TProductServiceImpl extends ServiceImpl<TProductMapper, TProduct>
         query.addCriteria(Criteria.where("categoryId").in(collect));
         //根据销量倒序
         query.with(Sort.by(Sort.Direction.DESC, "saleCount")).limit(20);
+        query.addCriteria(Criteria.where("status").is(1));
         List<ProductDTO> productDTOS = mongoTemplate.find(query, ProductDTO.class);
         if (productDTOS.size() > 0) {
             return Result.success(productDTOS);
         }
-        //分页？？？
-        LambdaQueryWrapper<TProduct> queryWrapper = new LambdaQueryWrapper<>();
-        queryWrapper.eq(TProduct::getCategoryId, id);
-        List<TProduct> list = this.list(queryWrapper);
-        List<ProductDTO> productDTOList = list.stream().map(tProduct -> {
-            ProductDTO productDTO = new ProductDTO();
-            BeanUtil.copyProperties(tProduct, productDTO);
-            Long categoryId = tProduct.getCategoryId();
-            TCategory category = categoryService.getById(categoryId);
-            productDTO.setCategoryName(category.getName());
-            mongoTemplate.save(productDTO);
-            return productDTO;
-        }).collect(Collectors.toList());
-        return Result.success(productDTOList);
+        return Result.success(new ArrayList<>());
     }
 
     /**
@@ -342,24 +326,12 @@ public class TProductServiceImpl extends ServiceImpl<TProductMapper, TProduct>
     public Result queryProductRecommend() {
         Query query = new Query();
         query.limit(20).with(Sort.by(Sort.Direction.DESC, "saleCount"));
+        query.addCriteria(Criteria.where("status").is(1));
         List<ProductDTO> productDTOS = mongoTemplate.find(query, ProductDTO.class);
         if (productDTOS.size() != 0) {
             return Result.success(productDTOS);
         }
-        LambdaQueryWrapper<TProduct> queryWrapper = new LambdaQueryWrapper<>();
-        queryWrapper.orderByDesc(TProduct::getSaleCount);
-        queryWrapper.last("LIMIT 20");
-        List<TProduct> list = this.list(queryWrapper);
-        List<ProductDTO> collect = list.stream().map(product -> {
-            Long categoryId = product.getCategoryId();
-            TCategory category = categoryService.getById(categoryId);
-            ProductDTO productDTO = new ProductDTO();
-            BeanUtil.copyProperties(product, productDTO);
-            productDTO.setCategoryName(category.getName());
-            mongoTemplate.save(productDTO);
-            return productDTO;
-        }).collect(Collectors.toList());
-        return Result.success(collect);
+        return Result.success(new ArrayList<>());
     }
 
     /**
@@ -424,8 +396,8 @@ public class TProductServiceImpl extends ServiceImpl<TProductMapper, TProduct>
                 if (stock - quantity >= 0) {
                     boolean update = this.update()
                             .set("stock", newStock)
-                            .eq("stock", stock)
-                            .eq("sale_count", saleCount)
+//                            .eq("stock", stock)
+//                            .eq("sale_count", saleCount)
                             .eq("id", productId)
                             .gt("stock", 0)
                             .update();
@@ -491,36 +463,13 @@ public class TProductServiceImpl extends ServiceImpl<TProductMapper, TProduct>
     public Result queryAllProductByCategoryId(Integer id) {
         Query query = new Query();
         query.addCriteria(Criteria.where("categoryId").is(id));
+        query.addCriteria(Criteria.where("status").is(1));
         //根据销量倒序
         query.with(Sort.by(Sort.Direction.DESC, "saleCount"));
         List<ProductDTO> productDTOS = mongoTemplate.find(query, ProductDTO.class);
         return Result.success(productDTOS);
     }
 
-//    /**
-//     * 查询基分类下的所有商品
-//     * @param pageNum
-//     * @param pageSize
-//     * @param categoryId
-//     * @return
-//     */
-//    @Override
-//    public Result queryInitialProduct(Integer pageNum, Integer pageSize, int categoryId) {
-//        Page<ProductDTO> page = new Page<>(pageNum, pageSize);
-//        Query query = new Query();
-//        query.addCriteria(Criteria.where("parentId").is(categoryId));
-//        List<CategoryDTO> categoryDTOS = mongoTemplate.find(query, CategoryDTO.class);
-//        List<Long> categoryChildIdList = categoryDTOS.stream().map(CategoryDTO::getId).collect(Collectors.toList());
-//        Query queryProduct = new Query();
-//        queryProduct.addCriteria(Criteria.where("categoryId").in(categoryChildIdList));
-//        long count = mongoTemplate.count(queryProduct, ProductDTO.class);
-//        page.setTotal(count);
-//        queryProduct.limit(pageSize).skip((long) (pageNum - 1) * pageSize);
-//        queryProduct.with(Sort.by(Sort.Direction.DESC, "saleCount"));
-//        List<ProductDTO> productDTOS = mongoTemplate.find(queryProduct, ProductDTO.class);
-//        page.setRecords(productDTOS);
-//        return Result.success(page);
-//    }
 }
 
 

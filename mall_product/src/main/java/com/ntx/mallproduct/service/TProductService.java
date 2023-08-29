@@ -21,7 +21,7 @@ public interface TProductService extends IService<TProduct> {
 
     Result updateProductStatus(TProduct product) throws IOException;
 
-    Result deleteProduct(Integer id);
+    Result deleteProduct(Integer id) throws IOException;
 
     Result updateProduct(ProductDTO productDTO) throws IOException;
 

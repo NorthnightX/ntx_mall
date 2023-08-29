@@ -1,5 +1,6 @@
 package com.ntx.mallorder.service.impl;
 
+import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 
 import com.ntx.mallcommon.domain.TOrderItem;
@@ -16,6 +17,15 @@ import org.springframework.stereotype.Service;
 public class TOrderItemServiceImpl extends ServiceImpl<TOrderItemMapper, TOrderItem>
     implements TOrderItemService {
 
+    @Override
+    public Boolean getOrderByProduct(int id) {
+        LambdaQueryWrapper<TOrderItem> queryWrapper = new LambdaQueryWrapper<>();
+        queryWrapper.eq(TOrderItem::getProductId, id);
+        queryWrapper.eq(TOrderItem::getDeleted, 1);
+        queryWrapper.last("LIMIT 1");
+        TOrderItem one = this.getOne(queryWrapper);
+        return one == null;
+    }
 }
 
 
