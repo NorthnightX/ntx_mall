@@ -133,9 +133,7 @@ public class TProductServiceImpl extends ServiceImpl<TProductMapper, TProduct>
     @Override
     public Result updateProductStatus(TProduct product) throws IOException {
         //牵扯较多
-        if (true) {
-            return Result.error("权限不够");
-        }
+
 
         Integer status = product.getStatus();
         Long id = product.getId();
@@ -163,9 +161,6 @@ public class TProductServiceImpl extends ServiceImpl<TProductMapper, TProduct>
     @Override
     public Result deleteProduct(Integer id) {
         //暂停使用
-        if (true) {
-            return Result.error("权限不够");
-        }
 
         boolean update = this.update().
                 eq("id", id).set("deleted", DELETED_PRODUCT)
@@ -183,9 +178,7 @@ public class TProductServiceImpl extends ServiceImpl<TProductMapper, TProduct>
     @Override
     public Result updateProduct(ProductDTO productDTO) throws IOException {
         //牵扯较多
-        if (true) {
-            return Result.error("权限不够");
-        }
+
         TProduct product = new TProduct();
         productDTO.setGmtModified(LocalDateTime.now());
         BeanUtil.copyProperties(productDTO, product);

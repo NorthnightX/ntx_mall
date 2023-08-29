@@ -6,10 +6,13 @@ import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.ntx.mallcommon.domain.Result;
 import com.ntx.mallcommon.domain.TCategory;
+import com.ntx.mallcommon.domain.TProduct;
 import com.ntx.mallproduct.DTO.CategoryDTO;
+import com.ntx.mallproduct.DTO.ProductDTO;
 import com.ntx.mallproduct.mapper.TCategoryMapper;
 import com.ntx.mallproduct.service.TCategoryService;
 
+import com.ntx.mallproduct.service.TProductService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.mongodb.core.MongoTemplate;
 import org.springframework.data.mongodb.core.query.Criteria;
@@ -17,6 +20,7 @@ import org.springframework.data.mongodb.core.query.Query;
 import org.springframework.data.mongodb.core.query.Update;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -36,6 +40,8 @@ public class TCategoryServiceImpl extends ServiceImpl<TCategoryMapper, TCategory
     private MongoTemplate mongoTemplate;
     @Autowired
     private StringRedisTemplate stringRedisTemplate;
+    @Autowired
+    private TProductService productService;
 
     /**
      * 分类分页查询
@@ -126,12 +132,23 @@ public class TCategoryServiceImpl extends ServiceImpl<TCategoryMapper, TCategory
      */
     @Override
     public Result updateCategory(CategoryDTO categoryDTO) {
-        //先禁用分类的修改
-        //暂停使用
-        if(true){
-            return Result.error("权限不够");
+        if(categoryDTO.getStatus() == 0){
+            Long id = categoryDTO.getId();
+            Query queryCategory = new Query();
+            queryCategory.addCriteria(Criteria.where("parentId").is(id));
+            queryCategory.addCriteria(Criteria.where("status").is(1));
+            CategoryDTO one = mongoTemplate.findOne(queryCategory, CategoryDTO.class);
+            if(one != null){
+                return Result.error("该分类下还有分类未处理");
+            }
+            Query queryProduct = new Query();
+            queryProduct.addCriteria(Criteria.where("categoryId").is(id));
+            queryProduct.addCriteria(Criteria.where("status").is(1));
+            ProductDTO productDTO = mongoTemplate.findOne(queryProduct, ProductDTO.class);
+            if(productDTO != null){
+                return Result.error("该分类下还有产品未处理");
+            }
         }
-
         TCategory category = new TCategory();
         categoryDTO.setGmtModified(LocalDateTime.now());
         BeanUtil.copyProperties(categoryDTO, category);
@@ -154,16 +171,26 @@ public class TCategoryServiceImpl extends ServiceImpl<TCategoryMapper, TCategory
      * @return
      */
     @Override
+    @Transactional
     public Result updateCategoryStatus(TCategory category) {
-        //先禁用分类的修改
-        //暂停使用
-        if(true){
-            return Result.error("权限不够");
-        }
-
-        Integer status = category.getStatus();
+        //如果该分类下还有其他分类
         Long id = category.getId();
-        boolean update = this.update()
+        Query queryCategory = new Query();
+        queryCategory.addCriteria(Criteria.where("parentId").is(id));
+        queryCategory.addCriteria(Criteria.where("status").is(1));
+        CategoryDTO one = mongoTemplate.findOne(queryCategory, CategoryDTO.class);
+        if(one != null){
+            return Result.error("该分类下还有分类未处理");
+        }
+        Query queryProduct = new Query();
+        queryProduct.addCriteria(Criteria.where("categoryId").is(id));
+        queryProduct.addCriteria(Criteria.where("status").is(1));
+        ProductDTO productDTO = mongoTemplate.findOne(queryProduct, ProductDTO.class);
+        if(productDTO != null){
+            return Result.error("该分类下还有产品未处理");
+        }
+        Integer status = category.getStatus();
+        this.update()
                 .eq("id", id).set("status", status)
                 .set("gmt_modified", LocalDateTime.now()).update();
         Update updateMongo = new Update();
@@ -172,26 +199,40 @@ public class TCategoryServiceImpl extends ServiceImpl<TCategoryMapper, TCategory
         Query query = new Query();
         query.addCriteria(Criteria.where("_id").is(category.getId()));
         mongoTemplate.updateFirst(query, updateMongo, CategoryDTO.class);
-        return update ? Result.success("修改成功") : Result.error("网络异常");
+        return Result.success("修改成功");
     }
 
     /**
-     * 删除分类 ！！！！！！！！！！！！！
+     * 删除分类
      * @param id
      * @return
      */
     @Override
+    @Transactional
     public Result deleteCategory(Integer id) {
-        //暂停使用
-        if(true){
-            return Result.error("权限不够");
+        LambdaQueryWrapper<TProduct> queryWrapper = new LambdaQueryWrapper<>();
+        queryWrapper.eq(TProduct::getCategoryId, id);
+        queryWrapper.last("LIMIT 1");
+        TProduct isAbsent = productService.getOne(queryWrapper);
+        if(isAbsent != null){
+            return Result.error("该分类下还有商品");
         }
-
-        boolean update = this.update().
+        LambdaQueryWrapper<TCategory> queryWrapperCategory = new LambdaQueryWrapper<>();
+        queryWrapperCategory.eq(TCategory::getParentId, id);
+        queryWrapperCategory.last("LIMIT 1");
+        TCategory category = this.getOne(queryWrapperCategory);
+        if(category != null){
+            return Result.error("该分类还有子分类");
+        }
+        this.update().
                 eq("id", id).set("deleted", DELETED_CATEGORY)
                 .set("gmt_modified", LocalDateTime.now()).
                 update();
-        return update ? Result.success("删除成功") : Result.error("网络异常");
+        //删除MongoDB的分类
+        Query query = new Query();
+        query.addCriteria(Criteria.where("_id").is(id));
+        mongoTemplate.remove(query, CategoryDTO.class);
+        return Result.success("删除成功");
     }
 
     /**
@@ -200,6 +241,7 @@ public class TCategoryServiceImpl extends ServiceImpl<TCategoryMapper, TCategory
      * @return
      */
     @Override
+    @Transactional
     public Result addCategory(TCategory category) {
         Long parentId = category.getParentId();
         TCategory tCategory = this.getById(parentId);
@@ -210,7 +252,7 @@ public class TCategoryServiceImpl extends ServiceImpl<TCategoryMapper, TCategory
         category.setGmtModified(LocalDateTime.now());
         category.setDeleted(ADD_CATEGORY_DELETED);
         category.setStatus(ADD_CATEGORY_STATUS);
-        boolean save = this.save(category);
+        this.save(category);
         //保存到mongodb
         CategoryDTO categoryDTO = new CategoryDTO();
         BeanUtil.copyProperties(category, categoryDTO);
@@ -222,7 +264,7 @@ public class TCategoryServiceImpl extends ServiceImpl<TCategoryMapper, TCategory
             categoryDTO.setParentName(category1.getName());
         }
         mongoTemplate.save(categoryDTO);
-        return save ? Result.success("新增成功") : Result.error("网络异常");
+        return Result.success("新增成功");
     }
 
     /**
@@ -256,6 +298,11 @@ public class TCategoryServiceImpl extends ServiceImpl<TCategoryMapper, TCategory
         return Result.success(categoryDTOList);
     }
 
+    /**
+     * 查询分类下的子分类
+     * @param id
+     * @return
+     */
     @Override
     public Result queryChildCategory(Integer id) {
         Query query = new Query();
