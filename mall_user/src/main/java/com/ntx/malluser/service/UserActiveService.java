@@ -14,4 +14,6 @@ public interface UserActiveService extends IService<UserActive> {
 
 
     Result history(Integer pageNum, Integer pageSize);
+
+    Result deleteFoot(int id);
 }

@@ -48,6 +48,15 @@ public class UserActiveServiceImpl extends ServiceImpl<UserActiveMapper, UserAct
             UserHolder.removeUser();
         }
     }
+
+    @Override
+    public Result deleteFoot(int id) {
+        this.removeById(id);
+        Query query = new Query();
+        query.addCriteria(Criteria.where("_id").is(id));
+        mongoTemplate.remove(query, ActiveDTO.class);
+        return Result.success("删除成功");
+    }
 }
 
 

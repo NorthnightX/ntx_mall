@@ -17,4 +17,9 @@ public class UserActiveController {
                               @RequestParam(required = false, defaultValue = "10") Integer pageSize){
         return userActiveService.history(pageNum, pageSize);
     }
+
+    @DeleteMapping("/deleteFoot")
+    public Result deleteFoot(@RequestParam int id){
+        return userActiveService.deleteFoot(id);
+    }
 }
