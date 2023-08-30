@@ -22,7 +22,7 @@ public class AdvertiseController {
     @GetMapping("/getAdvertise")
     public Result getAdvertise(@RequestParam(required = false, defaultValue = "1") Integer pageNum,
                                @RequestParam(required = false, defaultValue = "10") Integer pageSize,
-                               @RequestParam Integer status){
+                               @RequestParam(required = false) Integer status){
         return advertiseService.getAdvertise(pageNum, pageSize, status);
     }
 

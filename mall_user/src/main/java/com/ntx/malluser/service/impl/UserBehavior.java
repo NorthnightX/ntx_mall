@@ -36,7 +36,7 @@ public class UserBehavior {
     private ProductClient productClient;
     @KafkaListener(topics = "userBehavior", groupId = "userBehavior")
     public void userBehavior(ConsumerRecord<String, String> record){
-        //当天对同一商品的浏览，只添加一次浏览记录，后面的只修改时间
+        //当天对同一商品的浏览，只添加一次浏览记录，后面的只修改时间，后续需要优化
         String value = record.value();
         UserActive userActive = JSON.parseObject(value, UserActive.class);
         LocalDateTime gmtCreate = userActive.getGmtCreate();

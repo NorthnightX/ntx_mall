@@ -1,13 +1,16 @@
 package com.ntx.malluser.service.impl;
 
 import cn.hutool.core.bean.BeanUtil;
+import cn.hutool.core.util.IdUtil;
 import cn.hutool.crypto.digest.MD5;
 import com.alibaba.fastjson.JSON;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.ntx.mallcommon.domain.Result;
 import com.ntx.mallcommon.domain.TUser;
 import com.ntx.malluser.mapper.TUserMapper;
+import com.ntx.malluser.pojo.DTO.UserHolder;
 import com.ntx.malluser.pojo.ImageVerificationCode;
 import com.ntx.malluser.pojo.VO.LoginForm;
 import com.ntx.malluser.pojo.VO.UserVO;
@@ -21,6 +24,7 @@ import javax.imageio.ImageIO;
 import java.awt.image.BufferedImage;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.time.LocalDateTime;
 import java.util.*;
 import java.util.concurrent.TimeUnit;
 import static com.ntx.malluser.common.SystemConstant.*;
@@ -136,6 +140,83 @@ public class TUserServiceImpl extends ServiceImpl<TUserMapper, TUser>
         }
         Map<String, String> map = generateToken(user);
         return Result.success(map);
+    }
+
+    @Override
+    public String getUserName(Integer userId) {
+        TUser user = this.getById(userId);
+        return user.getUsername();
+    }
+
+    @Override
+    public Result queryAll(Integer pageNum, Integer pageSize, Integer status, Integer role, String username) {
+        Page<TUser> page = new Page<>(pageNum, pageSize);
+        LambdaQueryWrapper<TUser> queryWrapper = new LambdaQueryWrapper<>();
+        queryWrapper.eq(status != null, TUser::getStatus, status);
+        queryWrapper.eq(role != null, TUser::getRole, role);
+        queryWrapper.eq( TUser::getDeleted, 1);
+        queryWrapper.like(username != null && username.length() > 0, TUser::getUsername, username);
+        int count = this.count(queryWrapper);
+        int offset = (pageNum - 1) * pageSize;
+        queryWrapper.last("limit " + offset + "," + pageSize);
+        List<TUser> list = this.list(queryWrapper);
+        page.setTotal(count);
+        page.setRecords(list);
+        return Result.success(page);
+    }
+
+    @Override
+    public Result updateStatus(TUser user) {
+        Long id = UserHolder.getUser().getId();
+        try {
+            if(Objects.equals(id, user.getId())){
+                return Result.error("不能修改自己的帐号状态");
+            }
+            this.update().eq("id", user.getId()).set("status", user.getStatus()).update();
+            return Result.success("修改成功");
+        } finally {
+            UserHolder.removeUser();
+        }
+    }
+
+    @Override
+    public Result delete(int id) {
+        Long id1 = UserHolder.getUser().getId();
+        try {
+            if(id1 == id){
+                return Result.error("不能删除自己");
+            }
+            this.update().eq("id", id).set("deleted", 0).set("status", 0).set("gmt_modified", LocalDateTime.now()).update();
+            return Result.success("删除成功");
+        } finally {
+            UserHolder.removeUser();
+        }
+    }
+
+    @Override
+    public Result updatePassword(Integer id) {
+        String password = "123456";
+        String digestedHex = MD5.create().digestHex(password);
+        this.update().eq("id", id).set("password", digestedHex).set("gmt_modified", LocalDateTime.now()).update();
+        return Result.success("重置成功");
+    }
+
+    @Override
+    public Result updateUser(TUser user) {
+        Long id = UserHolder.getUser().getId();
+        if(Objects.equals(id, user.getId())){
+            TUser tUser = this.getById(id);
+            Integer role = tUser.getRole();
+            if(!Objects.equals(role, user.getRole())){
+                return Result.error("不能自己修改自己的角色");
+            }
+            if(!Objects.equals(tUser.getStatus(), user.getStatus())){
+                return Result.error("不能修改自己的账号状态");
+            }
+        }
+        user.setGmtModified(LocalDateTime.now());
+        this.updateById(user);
+        return Result.success("修改成功");
     }
 
     private Map<String, String> generateToken(TUser user){

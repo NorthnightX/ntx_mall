@@ -13,5 +13,11 @@ import com.ntx.mallcommon.domain.TOrder;
 public interface TOrderService extends IService<TOrder> {
 
     Result payOrder(TOrder order);
+
+
+    Result myOrder(Integer pageNum, Integer pageSize);
+
+    Result queryAll(Integer pageNum, Integer pageSize, Integer status, String productName);
+
     ;
 }

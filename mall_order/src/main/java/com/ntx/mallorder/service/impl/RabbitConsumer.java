@@ -1,16 +1,19 @@
 package com.ntx.mallorder.service.impl;
 
+import cn.hutool.core.bean.BeanUtil;
 import cn.hutool.core.util.IdUtil;
 import com.alibaba.fastjson.JSON;
 import com.ntx.mallcommon.domain.*;
 import com.ntx.mallcommon.feign.CartClient;
 import com.ntx.mallcommon.feign.ProductClient;
+import com.ntx.mallorder.DTO.OrderDTO;
 import com.ntx.mallorder.config.RabbitConfig;
 import com.ntx.mallorder.service.TOrderItemService;
 import com.ntx.mallorder.service.TOrderService;
 import com.ntx.mallorder.service.TPayInfoService;
 import org.springframework.amqp.rabbit.annotation.RabbitListener;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.mongodb.core.MongoTemplate;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -18,6 +21,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -38,6 +42,8 @@ public class RabbitConsumer {
     private CartClient cartClient;
     @Autowired
     private TPayInfoService payInfoService;
+    @Autowired
+    private MongoTemplate mongoTemplate;
 
     @RabbitListener(queues = RabbitConfig.ORDER_QUEUE)
     @Transactional
@@ -65,6 +71,7 @@ public class RabbitConsumer {
         //商品信息集合
         List<TProduct> product = productClient.getProduct(productIdList);
         //遍历商品计算总金额
+        List<TOrderItem> list = new ArrayList<>();
         for (TProduct tProduct : product) {
             Long productId = tProduct.getId();
             TCart tCart = cartMap.get(productId);
@@ -87,6 +94,7 @@ public class RabbitConsumer {
             orderItem.setGmtCreate(LocalDateTime.now());
             orderItem.setGmtModified(LocalDateTime.now());
             orderItemService.save(orderItem);
+            list.add(orderItem);
             //总金额计算
             totalAmount = totalAmount.add(productTotal);
         }
@@ -107,6 +115,17 @@ public class RabbitConsumer {
         payInfoService.save(tPayInfo);
         //移除用户的购物车信息
         cartClient.removeUserCart(tOrder.getUserId());
-        //发送用户购买信息到kafka，用于数据分析
+        //设置OrderDTO
+        OrderDTO orderDTO = new OrderDTO();
+        orderDTO.setOrderItemList(list);
+        BeanUtil.copyProperties(tOrder, orderDTO);
+        if(orderDTO.getPaymentType() == 1){
+            orderDTO.setPaymentTypeName("微信");
+        }
+        else {
+            orderDTO.setPaymentTypeName("支付宝");
+        }
+        orderDTO.setStatusName("已支付");
+        mongoTemplate.save(orderDTO);
     }
 }

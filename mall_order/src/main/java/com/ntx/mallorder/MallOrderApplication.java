@@ -13,6 +13,6 @@ import org.springframework.scheduling.annotation.EnableScheduling;
 public class MallOrderApplication {
     public static void main(String[] args) {
         SpringApplication.run(MallOrderApplication.class, args);
-        System.out.println("商品模块启动成功");
+        System.out.println("订单模块启动成功");
     }
 }

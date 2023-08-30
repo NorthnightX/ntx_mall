@@ -20,4 +20,16 @@ public interface TUserService extends IService<TUser> {
     Result loginAdmin(LoginForm loginForm);
 
     Result loginUser(LoginForm loginForm);
+
+    String getUserName(Integer userId);
+
+    Result queryAll(Integer pageNum, Integer pageSize, Integer status, Integer role, String username);
+
+    Result updateStatus(TUser user);
+
+    Result delete(int id);
+
+    Result updatePassword(Integer id);
+
+    Result updateUser(TUser user);
 }

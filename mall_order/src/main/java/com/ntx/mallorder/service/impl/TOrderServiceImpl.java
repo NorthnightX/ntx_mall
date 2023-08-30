@@ -3,20 +3,23 @@ package com.ntx.mallorder.service.impl;
 import cn.hutool.core.util.IdUtil;
 import com.alibaba.fastjson.JSON;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
-import com.ntx.mallcommon.domain.Result;
-import com.ntx.mallcommon.domain.TCart;
-import com.ntx.mallcommon.domain.TOrder;
-import com.ntx.mallcommon.domain.TProduct;
+import com.ntx.mallcommon.domain.*;
 import com.ntx.mallcommon.feign.CartClient;
 import com.ntx.mallcommon.feign.ProductClient;
+import com.ntx.mallcommon.feign.UserClient;
+import com.ntx.mallorder.DTO.OrderDTO;
 import com.ntx.mallorder.DTO.UserHolder;
 import com.ntx.mallorder.config.RabbitConfig;
 import com.ntx.mallorder.mapper.TOrderMapper;
+import com.ntx.mallorder.service.TOrderItemService;
 import com.ntx.mallorder.service.TOrderService;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.mongodb.core.MongoTemplate;
+import org.springframework.data.mongodb.core.query.Criteria;
+import org.springframework.data.mongodb.core.query.Query;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -41,6 +44,10 @@ public class TOrderServiceImpl extends ServiceImpl<TOrderMapper, TOrder>
     private ProductClient productClient;
     @Autowired
     private RabbitTemplate rabbitTemplate;
+    @Autowired
+    private TOrderItemService orderItemService;
+    @Autowired
+    private UserClient userClient;
 
     /**
      * 订单异步处理，先扣除数据库的库存,开启事务，防止数据在异常时被修改
@@ -102,6 +109,52 @@ public class TOrderServiceImpl extends ServiceImpl<TOrderMapper, TOrder>
         } finally {
             UserHolder.removeUser();
         }
+    }
+
+    /**
+     * 我的订单
+     * @param pageNum
+     * @param pageSize
+     * @return
+     */
+    @Override
+    public Result myOrder(Integer pageNum, Integer pageSize) {
+        Page<OrderDTO> page = new Page<>(pageNum, pageSize);
+        Long id = UserHolder.getUser().getId();
+        Query query = new Query();
+        query.addCriteria(Criteria.where("userId").is(id));
+        long count = mongoTemplate.count(query, OrderDTO.class);
+        query.skip((long) (pageNum - 1) * pageSize).limit(pageSize);
+        List<OrderDTO> orderDTOS = mongoTemplate.find(query, OrderDTO.class);
+        page.setTotal(count);
+        page.setRecords(orderDTOS);
+        return Result.success(page);
+    }
+
+    @Override
+    public Result queryAll(Integer pageNum, Integer pageSize, Integer status, String productName) {
+        Page<OrderDTO> page = new Page<>(pageNum, pageSize);
+        Query query = new Query();
+        if(status != null){
+            query.addCriteria(Criteria.where("status").is(status));
+        }
+        if(productName != null && productName.length() > 0){
+            LambdaQueryWrapper<TOrderItem> itemLambdaQueryWrapper = new LambdaQueryWrapper<>();
+            itemLambdaQueryWrapper.like(TOrderItem::getProductName, productName);
+            List<Long> collect = orderItemService.list(itemLambdaQueryWrapper).stream().
+                    map(TOrderItem::getOrderNo).distinct().collect(Collectors.toList());
+            query.addCriteria(Criteria.where("_id").in(collect));
+        }
+        long count = mongoTemplate.count(query, OrderDTO.class);
+        query.skip((long) (pageNum - 1) * pageSize).limit(pageSize);
+        page.setTotal(count);
+        List<OrderDTO> collect = mongoTemplate.find(query, OrderDTO.class).stream().peek(orderDTO -> {
+            Long userId = orderDTO.getUserId();
+            String userName = userClient.getUserName(Math.toIntExact(userId));
+            orderDTO.setUserName(userName);
+        }).collect(Collectors.toList());
+        page.setRecords(collect);
+        return Result.success(page);
     }
 }
 

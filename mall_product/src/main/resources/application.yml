@@ -58,7 +58,7 @@ spring:
 
   data:
     mongodb:
-      uri: mongodb://ntx:155365@8.140.17.235:27017/malldb
+      uri: mongodb://ntx:155365@8.140.17.235:27017/malldb?connectTimeoutMS=60000
 mybatis-plus:
   type-aliases-package: com.ntx.mallcommon.domain
   configuration:
