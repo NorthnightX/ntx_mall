@@ -4,6 +4,7 @@ package com.ntx.mallorder.service;
 import com.baomidou.mybatisplus.extension.service.IService;
 import com.ntx.mallcommon.domain.Result;
 import com.ntx.mallcommon.domain.TShipping;
+import com.ntx.mallorder.DTO.ShippingDTO;
 
 /**
 * @author NorthnightX
@@ -17,4 +18,6 @@ public interface TShippingService extends IService<TShipping> {
     Result getShipping();
 
     Result deleteShipping(Integer id);
+
+    Result updateShipping(TShipping shipping);
 }

@@ -2,6 +2,7 @@ package com.ntx.mallorder.controller;
 
 import com.ntx.mallcommon.domain.Result;
 import com.ntx.mallcommon.domain.TShipping;
+import com.ntx.mallorder.DTO.ShippingDTO;
 import com.ntx.mallorder.service.TShippingService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
@@ -38,5 +39,11 @@ public class ShippingController {
     @DeleteMapping("/deleteShipping/{id}")
     public Result deleteShipping(@PathVariable Integer id){
         return shippingService.deleteShipping(id);
+    }
+
+    @PutMapping("/updateShipping")
+    public Result updateShipping(@RequestBody TShipping shipping){
+        return shippingService.updateShipping(shipping);
+
     }
 }

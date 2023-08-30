@@ -1,6 +1,7 @@
 package com.ntx.mallorder.service.impl;
 
 import cn.hutool.core.bean.BeanUtil;
+import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.ntx.mallcommon.domain.Province;
 import com.ntx.mallcommon.domain.Result;
@@ -14,7 +15,6 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.mongodb.core.MongoTemplate;
 import org.springframework.data.mongodb.core.query.Criteria;
 import org.springframework.data.mongodb.core.query.Query;
-import org.springframework.data.mongodb.core.query.Update;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
@@ -39,7 +39,7 @@ public class TShippingServiceImpl extends ServiceImpl<TShippingMapper, TShipping
             //因为前台传过来的省市为编号，需要进一步处理
             Query query = new Query(Criteria.where("userId").is(user.getId()));
             List<ShippingDTO> shippingDTOS = mongoTemplate.find(query, ShippingDTO.class);
-            if(shippingDTOS.size() == 4){
+            if (shippingDTOS.size() == 4) {
                 return Result.error("最多可以设置4个收货地址");
             }
             String receiverCity = shipping.getReceiverCity();
@@ -114,6 +114,7 @@ public class TShippingServiceImpl extends ServiceImpl<TShippingMapper, TShipping
 
     /**
      * 删除用户地址信息
+     *
      * @param id
      * @return
      */
@@ -124,6 +125,58 @@ public class TShippingServiceImpl extends ServiceImpl<TShippingMapper, TShipping
         Query query = new Query(Criteria.where("_id").is(id));
         mongoTemplate.remove(query, ShippingDTO.class);
         return Result.success("删除成功");
+    }
+
+    @Override
+    public Result updateShipping(TShipping shipping) {
+        //因为前台传过来的省市为编号，需要进一步处理
+        String receiverCity = shipping.getReceiverCity();
+        String receiverDistrict = shipping.getReceiverDistrict();
+        String receiverProvince = shipping.getReceiverProvince();
+        //查询省
+        Query queryProvince = new Query(Criteria.where("province").is(receiverProvince)).
+                addCriteria(Criteria.where("city").is("0"));
+        Province province = mongoTemplate.findOne(queryProvince, Province.class);
+        if (province != null) {
+            String provinceName = province.getName();
+            shipping.setReceiverProvince(provinceName);
+            if (provinceName.equals("北京市") || provinceName.equals("上海市")
+                    || provinceName.equals("天津市") ||
+                    provinceName.equals("重庆市") || provinceName.equals("香港特别行政区") ||
+                    provinceName.equals("澳门特别行政区")) {
+                shipping.setReceiverCity(provinceName);
+                shipping.setReceiverDistrict(provinceName);
+            } else {
+                //查询市
+                Query queryCity = new Query(Criteria.where("province").is(receiverProvince)).
+                        addCriteria(Criteria.where("city").is(receiverCity)).
+                        addCriteria(Criteria.where("area").is("0"));
+                Province city = mongoTemplate.findOne(queryCity, Province.class);
+                if (city == null) {
+                    return Result.error("请选择城市");
+                }
+                shipping.setReceiverCity(city.getName());
+                //查询区：
+                Query queryArea = new Query(Criteria.where("province").is(receiverProvince)).
+                        addCriteria(Criteria.where("city").is(receiverCity)).
+                        addCriteria(Criteria.where("area").is(receiverDistrict));
+                Province area = mongoTemplate.findOne(queryArea, Province.class);
+                if (area == null) {
+                    return Result.error("请选择区域");
+                }
+                shipping.setReceiverDistrict(area.getName());
+            }
+        }
+        TShipping shippingOld = this.getById(shipping.getId());
+        shipping.setStatus(shippingOld.getStatus());
+        shipping.setDeleted(shippingOld.getDeleted());
+        shipping.setGmtModified(LocalDateTime.now());
+        shipping.setGmtCreate(shippingOld.getGmtCreate());
+        ShippingDTO shippingDTO = new ShippingDTO();
+        BeanUtil.copyProperties(shipping, shippingDTO);
+        this.updateById(shipping);
+        mongoTemplate.save(shippingDTO);
+        return Result.success("修改成功");
     }
 }
 
