@@ -17,6 +17,7 @@ import com.ntx.mallorder.service.TOrderItemService;
 import com.ntx.mallorder.service.TOrderService;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.Sort;
 import org.springframework.data.mongodb.core.MongoTemplate;
 import org.springframework.data.mongodb.core.query.Criteria;
 import org.springframework.data.mongodb.core.query.Query;
@@ -126,6 +127,7 @@ public class TOrderServiceImpl extends ServiceImpl<TOrderMapper, TOrder>
         query.addCriteria(Criteria.where("userId").is(id));
         long count = mongoTemplate.count(query, OrderDTO.class);
         query.skip((long) (pageNum - 1) * pageSize).limit(pageSize);
+        query.with(Sort.by(Sort.Direction.DESC, "gmtCreate"));
         List<OrderDTO> orderDTOS = mongoTemplate.find(query, OrderDTO.class);
         page.setTotal(count);
         page.setRecords(orderDTOS);

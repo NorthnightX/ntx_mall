@@ -25,13 +25,14 @@ spring:
         max-idle: 10
         min-idle: 1
         time-between-eviction-runs: 10s
+      shutdown-timeout: 100000ms
     host: 8.140.17.235
   #      host: 192.168.80.128
   jackson:
     default-property-inclusion: non_null
   data:
     mongodb:
-      uri: mongodb://ntx:155365@8.140.17.235:27017/malldb?connectTimeoutMS=60000
+      uri: mongodb://ntx:155365@8.140.17.235:27017/malldb?connectTimeoutMS=60000&maxIdleTimeMS=60000
 mybatis-plus:
   type-aliases-package: com.ntx.mallcommon.domain
   configuration:
