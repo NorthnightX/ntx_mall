@@ -13,7 +13,7 @@ spring:
   cloud:
     nacos:
       discovery:
-        server-addr: 127.0.0.1:8848
+        server-addr: localhost:8848
 
   #        server-addr: 8.140.17.235:8848
   # 标记应用名称,用于注册中心注册

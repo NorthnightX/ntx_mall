@@ -48,5 +48,10 @@ public class OrderController {
         return orderService.queryAll(pageNum, pageSize, status, productName);
     }
 
+    @DeleteMapping("/deleteOrder")
+    public Result deleteOrder(@RequestParam Long orderId){
+        return orderService.deleteOrder(orderId);
+    }
+
 
 }

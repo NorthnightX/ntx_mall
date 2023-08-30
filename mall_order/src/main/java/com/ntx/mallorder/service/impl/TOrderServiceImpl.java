@@ -23,6 +23,7 @@ import org.springframework.data.mongodb.core.query.Query;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDateTime;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -141,6 +142,7 @@ public class TOrderServiceImpl extends ServiceImpl<TOrderMapper, TOrder>
         if(productName != null && productName.length() > 0){
             LambdaQueryWrapper<TOrderItem> itemLambdaQueryWrapper = new LambdaQueryWrapper<>();
             itemLambdaQueryWrapper.like(TOrderItem::getProductName, productName);
+            itemLambdaQueryWrapper.eq(TOrderItem::getDeleted, 1);
             List<Long> collect = orderItemService.list(itemLambdaQueryWrapper).stream().
                     map(TOrderItem::getOrderNo).distinct().collect(Collectors.toList());
             query.addCriteria(Criteria.where("_id").in(collect));
@@ -155,6 +157,21 @@ public class TOrderServiceImpl extends ServiceImpl<TOrderMapper, TOrder>
         }).collect(Collectors.toList());
         page.setRecords(collect);
         return Result.success(page);
+    }
+
+    @Override
+    @Transactional
+    public Result deleteOrder(Long orderId) {
+        this.update().
+                eq("order_no", orderId).set("deleted", 0).
+                set("gmt_modified", LocalDateTime.now()).update();
+        orderItemService.update().
+                eq("order_no", orderId).set("deleted", 0).
+                set("gmt_modified", LocalDateTime.now()).update();
+        Query query = new Query();
+        query.addCriteria(Criteria.where("orderNo").is(orderId));
+        mongoTemplate.remove(query, OrderDTO.class);
+        return Result.success("删除成功");
     }
 }
 

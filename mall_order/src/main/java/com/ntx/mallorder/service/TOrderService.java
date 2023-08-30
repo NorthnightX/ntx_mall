@@ -19,5 +19,7 @@ public interface TOrderService extends IService<TOrder> {
 
     Result queryAll(Integer pageNum, Integer pageSize, Integer status, String productName);
 
+    Result deleteOrder(Long orderId);
+
     ;
 }

@@ -2,7 +2,9 @@ package com.ntx.mallorder.DTO;
 
 import com.baomidou.mybatisplus.annotation.TableId;
 import com.fasterxml.jackson.annotation.JsonFormat;
+import com.fasterxml.jackson.databind.annotation.JsonSerialize;
 import com.ntx.mallcommon.domain.TOrderItem;
+import com.ntx.mallorder.config.LongToStringSerializer;
 import lombok.Data;
 import org.springframework.data.annotation.Transient;
 import org.springframework.data.mongodb.core.mapping.Document;
@@ -18,6 +20,7 @@ import java.util.List;
 public class OrderDTO {
 
     @MongoId
+    @JsonSerialize(using = LongToStringSerializer.class)
     private Long orderNo;
 
     private Long userId;
