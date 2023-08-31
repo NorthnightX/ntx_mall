@@ -132,7 +132,6 @@ public class TUserServiceImpl extends ServiceImpl<TUserMapper, TUser>
     @Override
     public Result loginUser(LoginForm loginForm) {
         String phone = loginForm.getPhone();
-        String password = loginForm.getPassword();
         //如果手机格式无效
         if(RegexUtils.isPhoneInvalid(phone)){
             return Result.error("请输入正确的手机号");
@@ -140,9 +139,15 @@ public class TUserServiceImpl extends ServiceImpl<TUserMapper, TUser>
         LambdaQueryWrapper<TUser> queryWrapper = new LambdaQueryWrapper<>();
         queryWrapper.eq(TUser::getPhone, phone);
         TUser user = this.getOne(queryWrapper);
+        if(user == null){
+            return Result.error("该用户不存在");
+        }
         String MD5Password = MD5.create().digestHex(loginForm.getPassword());
         if(!user.getPassword().equals(MD5Password)){
             return Result.error("密码错误");
+        }
+        if(user.getStatus() == 0){
+            return Result.error("用户封禁");
         }
         Map<String, String> map = generateToken(user);
         return Result.success(map);
