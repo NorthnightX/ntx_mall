@@ -74,12 +74,16 @@ public class TShippingServiceImpl extends ServiceImpl<TShippingMapper, TShipping
     @Override
     public Result updateShipping(TShipping shipping) {
         try {
-            processAddress(shipping);
-            TShipping shippingOld = this.getById(shipping.getId());
-            shipping.setStatus(shippingOld.getStatus());
-            shipping.setDeleted(shippingOld.getDeleted());
+            Long id = shipping.getId();
+            TShipping older = this.getById(id);
+            if(!shipping.getReceiverProvince().equals(older.getReceiverProvince())){
+                //地址变了
+                processAddress(shipping);
+            }
+            shipping.setStatus(older.getStatus());
+            shipping.setDeleted(older.getDeleted());
             shipping.setGmtModified(LocalDateTime.now());
-            shipping.setGmtCreate(shippingOld.getGmtCreate());
+            shipping.setGmtCreate(older.getGmtCreate());
             ShippingDTO shippingDTO = new ShippingDTO();
             BeanUtil.copyProperties(shipping, shippingDTO);
             this.updateById(shipping);
@@ -90,6 +94,10 @@ public class TShippingServiceImpl extends ServiceImpl<TShippingMapper, TShipping
         }
     }
 
+    /**
+     * 填充地址信息
+     * @param shipping
+     */
     private void processAddress(TShipping shipping) {
         String receiverCity = shipping.getReceiverCity();
         String receiverDistrict = shipping.getReceiverDistrict();

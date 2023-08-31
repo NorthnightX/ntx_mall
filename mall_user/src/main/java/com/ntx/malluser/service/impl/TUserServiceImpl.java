@@ -219,6 +219,11 @@ public class TUserServiceImpl extends ServiceImpl<TUserMapper, TUser>
         return Result.success("修改成功");
     }
 
+    @Override
+    public TUser getUser(Integer userId) {
+        return this.getById(userId);
+    }
+
     private Map<String, String> generateToken(TUser user){
         String token = JwtUtils.generateToken(JSON.toJSONString(user));
         Map<String, String> map = new HashMap<>();

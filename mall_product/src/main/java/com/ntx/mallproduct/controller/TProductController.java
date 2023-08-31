@@ -1,5 +1,6 @@
 package com.ntx.mallproduct.controller;
 
+import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.api.R;
 import com.ntx.mallcommon.domain.Result;
 import com.ntx.mallcommon.domain.TCategory;
@@ -81,8 +82,9 @@ public class TProductController {
      */
     @GetMapping("/guessProductByUser")
     public Result getProductByUser() {
-
-        return Result.success(productService.list());
+        LambdaQueryWrapper<TProduct> queryWrapper = new LambdaQueryWrapper<>();
+        queryWrapper.last("limit 10");
+        return Result.success(productService.list(queryWrapper));
     }
 
     /**

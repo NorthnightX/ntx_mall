@@ -2,6 +2,7 @@ package com.ntx.mallproduct.service;
 
 
 import com.baomidou.mybatisplus.extension.service.IService;
+import com.ntx.mallcommon.domain.Result;
 import com.ntx.mallcommon.domain.TComment;
 
 /**
@@ -11,4 +12,13 @@ import com.ntx.mallcommon.domain.TComment;
 */
 public interface TCommentService extends IService<TComment> {
 
+    Result addComment(TComment comment);
+
+    Result queryByProduct(int id);
+
+    Result addFollowComment(TComment comment);
+
+    Result deleteChildComment(int id);
+
+    Result deleteComment(int id);
 }

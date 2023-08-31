@@ -37,7 +37,10 @@ public class UserController {
     public String getUserName(@RequestParam Integer userId){
         return userService.getUserName(userId);
     }
-
+    @GetMapping("/getUser")
+    public TUser getUser(@RequestParam Integer userId){
+        return userService.getUser(userId);
+    }
     @GetMapping("/queryAll")
     public Result queryAll(@RequestParam(required = false, defaultValue = "1") Integer pageNum,
                            @RequestParam(required = false, defaultValue = "10") Integer pageSize,
