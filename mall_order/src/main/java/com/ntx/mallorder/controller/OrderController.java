@@ -53,7 +53,15 @@ public class OrderController {
         return orderService.deleteOrder(orderId);
     }
 
-
+    /**
+     * 付款
+     * @param order
+     * @return
+     */
+    @PostMapping("/payForProduct")
+    public Result payForProduct(@RequestBody TOrder order){
+        return orderService.payForOrder(order);
+    }
 
 
 }

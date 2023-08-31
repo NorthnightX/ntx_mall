@@ -21,5 +21,7 @@ public interface TOrderService extends IService<TOrder> {
 
     Result deleteOrder(Long orderId);
 
+    Result payForOrder(TOrder order);
+
     ;
 }

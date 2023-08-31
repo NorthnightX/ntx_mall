@@ -15,12 +15,14 @@ import com.ntx.mallorder.config.RabbitConfig;
 import com.ntx.mallorder.mapper.TOrderMapper;
 import com.ntx.mallorder.service.TOrderItemService;
 import com.ntx.mallorder.service.TOrderService;
+import com.ntx.mallorder.service.TPayInfoService;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.mongodb.core.MongoTemplate;
 import org.springframework.data.mongodb.core.query.Criteria;
 import org.springframework.data.mongodb.core.query.Query;
+import org.springframework.data.mongodb.core.query.Update;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -28,6 +30,7 @@ import java.time.LocalDateTime;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 import java.util.stream.Collectors;
 
 /**
@@ -50,9 +53,11 @@ public class TOrderServiceImpl extends ServiceImpl<TOrderMapper, TOrder>
     private TOrderItemService orderItemService;
     @Autowired
     private UserClient userClient;
+    @Autowired
+    private TPayInfoService payInfoService;
 
     /**
-     * 订单异步处理，先扣除数据库的库存,开启事务，防止数据在异常时被修改
+     * 生成订单
      *
      * @param order
      * @return
@@ -135,6 +140,14 @@ public class TOrderServiceImpl extends ServiceImpl<TOrderMapper, TOrder>
         return Result.success(page);
     }
 
+    /**
+     * 查询订单
+     * @param pageNum
+     * @param pageSize
+     * @param status
+     * @param productName
+     * @return
+     */
     @Override
     public Result queryAll(Integer pageNum, Integer pageSize, Integer status, String productName) {
         Page<OrderDTO> page = new Page<>(pageNum, pageSize);
@@ -162,6 +175,11 @@ public class TOrderServiceImpl extends ServiceImpl<TOrderMapper, TOrder>
         return Result.success(page);
     }
 
+    /**
+     * 删除订单
+     * @param orderId
+     * @return
+     */
     @Override
     @Transactional
     public Result deleteOrder(Long orderId) {
@@ -175,6 +193,66 @@ public class TOrderServiceImpl extends ServiceImpl<TOrderMapper, TOrder>
         query.addCriteria(Criteria.where("orderNo").is(orderId));
         mongoTemplate.remove(query, OrderDTO.class);
         return Result.success("删除成功");
+    }
+
+    /**
+     * 支付订单
+     * @param order
+     * @return
+     */
+    @Override
+    @Transactional
+    public Result payForOrder(TOrder order) {
+        LambdaQueryWrapper<TOrder> queryWrapper = new LambdaQueryWrapper<>();
+        queryWrapper.eq(TOrder::getOrderNo, order.getOrderNo());
+        TOrder tOrder = this.getOne(queryWrapper);
+        if(tOrder == null){
+            return Result.error("该订单不存在");
+        }
+        Integer status = tOrder.getStatus();
+        if(status == 0){
+            return Result.error("该订单已超时取消");
+        }
+        if(status == 20){
+            return Result.error("该订单已支付");
+        }
+        if(status == 10){
+            //支付处理
+            tOrder.setPaymentTime(LocalDateTime.now());
+            tOrder.setEndTime(LocalDateTime.now());
+            tOrder.setGmtModified(LocalDateTime.now());
+            tOrder.setCloseTime(LocalDateTime.now());
+            //假数据
+            tOrder.setSendTime(LocalDateTime.now());
+            //设置订单已支付
+            tOrder.setStatus(20);
+            this.updateById(tOrder);
+            //设置支付信息
+            TPayInfo tPayInfo = new TPayInfo();
+            tPayInfo.setUserId(tOrder.getUserId());
+            tPayInfo.setOrderNo(tOrder.getOrderNo());
+            tPayInfo.setPayPlatform(Long.valueOf(tOrder.getPaymentType()));
+            tPayInfo.setPlatformNumber(UUID.randomUUID().toString());
+            tPayInfo.setPlatformStatus("已支付");
+            tPayInfo.setStatus(1);
+            tPayInfo.setDeleted(1);
+            tPayInfo.setGmtCreate(LocalDateTime.now());
+            tPayInfo.setGmtModified(LocalDateTime.now());
+            payInfoService.save(tPayInfo);
+            //更新Mongodb
+            Query query = new Query();
+            query.addCriteria(Criteria.where("_id").is(tOrder.getOrderNo()));
+            Update update = new Update();
+            update.set("status", 20);
+            update.set("gmtModified", LocalDateTime.now());
+            update.set("statusName", "已支付");
+            update.set("paymentTime", LocalDateTime.now());
+            update.set("endTime", LocalDateTime.now());
+            update.set("closeTime", LocalDateTime.now());
+            update.set("sendTime", LocalDateTime.now());
+            mongoTemplate.updateFirst(query, update, OrderDTO.class);
+        }
+        return Result.success("支付成功");
     }
 }
 
