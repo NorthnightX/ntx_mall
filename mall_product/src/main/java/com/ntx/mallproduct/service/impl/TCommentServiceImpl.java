@@ -6,6 +6,7 @@ import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.ntx.mallcommon.domain.Result;
 import com.ntx.mallcommon.domain.TComment;
 import com.ntx.mallcommon.domain.TUser;
+import com.ntx.mallcommon.feign.OrderClient;
 import com.ntx.mallcommon.feign.UserClient;
 import com.ntx.mallproduct.DTO.CommentDTO;
 import com.ntx.mallproduct.DTO.UserHolder;
@@ -22,6 +23,7 @@ import org.springframework.stereotype.Service;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 
 /**
 * @author NorthnightX
@@ -36,11 +38,18 @@ public class TCommentServiceImpl extends ServiceImpl<TCommentMapper, TComment>
     private MongoTemplate mongoTemplate;
     @Autowired
     private UserClient userClient;
+    @Autowired
+    private OrderClient orderClient;
 
     @Override
     public Result addComment(TComment comment) {
+        TUser user = UserHolder.getUser();
+        Boolean buyProduct = orderClient.isBuyProduct(Math.toIntExact(user.getId()), Math.toIntExact(comment.getProductId()));
+        if(!buyProduct){
+            return Result.error("你还没有购买该商品");
+        }
+        //主评论人需要购买商品
         try {
-            TUser user = UserHolder.getUser();
             comment.setUserId(user.getId());
             comment.setCommentParentId(0L);
             comment.setGmtCreate(LocalDateTime.now());
@@ -124,7 +133,12 @@ public class TCommentServiceImpl extends ServiceImpl<TCommentMapper, TComment>
 
     @Override
     public Result deleteChildComment(int id) {
-
+        Long userId = UserHolder.getUser().getId();
+        TComment tComment = this.getById(id);
+        TComment commentParent = this.getById(tComment.getCommentParentId());
+        if(!Objects.equals(tComment.getUserId(), userId) || !Objects.equals(commentParent.getUserId(), userId)){
+            return Result.error("权限不足");
+        }
         //删除子评论
         this.update().eq("id", id).set("deleted", 0).set("gmt_modified", LocalDateTime.now()).update();
         TComment comment = this.getById(id);
@@ -146,7 +160,11 @@ public class TCommentServiceImpl extends ServiceImpl<TCommentMapper, TComment>
 
     @Override
     public Result deleteComment(int id) {
-
+        Long userId = UserHolder.getUser().getId();
+        TComment tComment = this.getById(id);
+        if(!Objects.equals(tComment.getUserId(), userId)){
+            return Result.error("权限不足");
+        }
         //删除父评论
         this.update().eq("id", id).set("deleted", 0).set("gmt_modified", LocalDateTime.now()).update();
         //删除子评论

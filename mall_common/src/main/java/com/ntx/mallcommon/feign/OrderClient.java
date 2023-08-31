@@ -12,4 +12,7 @@ import java.util.List;
 public interface OrderClient {
     @GetMapping("/orderItem/getOrderByProduct")
     Boolean getOrder(@RequestParam int id);
+
+    @GetMapping("/orderItem/isBuyProduct")
+    Boolean isBuyProduct(@RequestParam int userId, @RequestParam int productId);
 }

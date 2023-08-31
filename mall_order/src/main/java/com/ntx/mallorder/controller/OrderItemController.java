@@ -1,6 +1,7 @@
 package com.ntx.mallorder.controller;
 
 import com.baomidou.mybatisplus.core.metadata.OrderItem;
+import com.ntx.mallcommon.domain.Result;
 import com.ntx.mallorder.service.TOrderItemService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -17,5 +18,14 @@ public class OrderItemController {
     @GetMapping("/getOrderByProduct")
     public Boolean getOrderByProduct(@RequestParam int id){
         return orderItemService.getOrderByProduct(id);
+    }
+
+    @GetMapping("/isBuyProduct")
+    public Boolean isBuyProduct(@RequestParam int userId, @RequestParam int productId){
+        return orderItemService.isBuyProduct(userId, productId);
+    }
+    @GetMapping("/isBuy")
+    public Result isBuyProduct( @RequestParam int productId){
+        return orderItemService.isBuy(productId);
     }
 }

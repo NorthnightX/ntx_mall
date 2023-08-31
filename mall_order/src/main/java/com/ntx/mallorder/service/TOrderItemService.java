@@ -2,6 +2,7 @@ package com.ntx.mallorder.service;
 
 
 import com.baomidou.mybatisplus.extension.service.IService;
+import com.ntx.mallcommon.domain.Result;
 import com.ntx.mallcommon.domain.TOrderItem;
 
 /**
@@ -12,4 +13,8 @@ import com.ntx.mallcommon.domain.TOrderItem;
 public interface TOrderItemService extends IService<TOrderItem> {
 
     Boolean getOrderByProduct(int id);
+
+    Boolean isBuyProduct(int userId, int productId);
+
+    Result isBuy(int productId);
 }
