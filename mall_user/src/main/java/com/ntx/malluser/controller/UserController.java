@@ -5,6 +5,7 @@ import com.ntx.mallcommon.domain.Result;
 import com.ntx.mallcommon.domain.TUser;
 import com.ntx.malluser.pojo.DTO.UserHolder;
 import com.ntx.malluser.pojo.VO.LoginForm;
+import com.ntx.malluser.pojo.VO.RegVo;
 import com.ntx.malluser.service.TUserService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
@@ -94,5 +95,13 @@ public class UserController {
     @PutMapping("/updateUserEmail")
     public Result updateUserEmail(@RequestBody TUser user){
         return userService.updateUserEmail(user);
+    }
+    @PostMapping("/reg")
+    public Result reg(@RequestBody RegVo regVo){
+        return userService.reg(regVo);
+    }
+    @GetMapping("/activeUser/{id}")
+    public Result activeUser(@PathVariable int id){
+        return userService.activeUser(id);
     }
 }

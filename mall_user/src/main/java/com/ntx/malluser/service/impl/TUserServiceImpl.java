@@ -1,22 +1,26 @@
 package com.ntx.malluser.service.impl;
 
 import cn.hutool.core.bean.BeanUtil;
-import cn.hutool.core.util.IdUtil;
 import cn.hutool.crypto.digest.MD5;
+import cn.hutool.json.JSONUtil;
 import com.alibaba.fastjson.JSON;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.ntx.mallcommon.domain.Result;
 import com.ntx.mallcommon.domain.TUser;
+import com.ntx.malluser.config.RabbitMQConfig;
 import com.ntx.malluser.mapper.TUserMapper;
+import com.ntx.malluser.pojo.DTO.Email;
 import com.ntx.malluser.pojo.DTO.UserHolder;
 import com.ntx.malluser.pojo.ImageVerificationCode;
 import com.ntx.malluser.pojo.VO.LoginForm;
+import com.ntx.malluser.pojo.VO.RegVo;
 import com.ntx.malluser.pojo.VO.UserVO;
 import com.ntx.malluser.service.TUserService;
 import com.ntx.malluser.utils.JwtUtils;
 import com.ntx.malluser.utils.RegexUtils;
+import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
@@ -40,6 +44,8 @@ public class TUserServiceImpl extends ServiceImpl<TUserMapper, TUser>
 
     @Autowired
     private StringRedisTemplate stringRedisTemplate;
+    @Autowired
+    private RabbitTemplate rabbitTemplate;
 
     @Override
     public Result getVerification() throws IOException {
@@ -278,6 +284,74 @@ public class TUserServiceImpl extends ServiceImpl<TUserMapper, TUser>
         Long id = UserHolder.getUser().getId();
         this.update().eq("id", id).set("email", email).set("gmt_modified", LocalDateTime.now()).update();
         return Result.success("修改成功");
+    }
+
+    @Override
+    public Result reg(RegVo regVo) {
+        TUser user = new TUser();
+        if(!regVo.getConfirmPassword().equals(regVo.getPassword())){
+            return Result.error("两次输入的密码不相等");
+        }
+        BeanUtil.copyProperties(regVo, user);
+        String username = user.getUsername();
+        if(username == null || username.length() == 0){
+            return Result.error("请输入用户名");
+        }
+        LambdaQueryWrapper<TUser> queryWrapper = new LambdaQueryWrapper<>();
+        queryWrapper.eq(TUser::getUsername, username);
+        TUser isUserNameAbsent = this.getOne(queryWrapper);
+        if(isUserNameAbsent != null){
+            return Result.error("该用户已存在");
+        }
+        String phone = user.getPhone();
+        LambdaQueryWrapper<TUser> queryWrapper1 = new LambdaQueryWrapper<>();
+        queryWrapper1.eq(TUser::getPhone, phone);
+        TUser user1 = this.getOne(queryWrapper1);
+        if(user1 != null){
+            return Result.error("该手机号已经注册");
+        }
+        if(phone == null || phone.length() == 0){
+            return Result.error("请输入手机号");
+        }
+        if(RegexUtils.isPhoneInvalid(phone)){
+            return Result.error("请输入正确的手机号");
+        }
+        LambdaQueryWrapper<TUser> queryWrapper2 = new LambdaQueryWrapper<>();
+        queryWrapper2.eq(TUser::getEmail, user.getEmail());
+        TUser user2 = this.getOne(queryWrapper2);
+        if(user2 != null){
+            return Result.error("该邮箱已经注册");
+        }
+        if(RegexUtils.isEmailInvalid(user.getEmail())){
+            return Result.error("请输入正确的邮箱");
+        }
+        String password = user.getPassword();
+        if(password == null || password.length() < 8){
+            return Result.error("请输入符合格式的密码");
+        }
+        if(user.getNickName() == null){
+            user.setNickName(user.getUsername());
+        }
+        user.setRole(1);
+        user.setGmtModified(LocalDateTime.now());
+        user.setGmtCreate(LocalDateTime.now());
+        user.setStatus(0);
+        user.setDeleted(1);
+        user.setAnswer("1");
+        user.setQuestion("1");
+        user.setDeptId(100L);
+        this.save(user);
+        long id = user.getId();
+        Email email = new Email("激活用户",user.getEmail(),"点击此链接完成验证:http://localhost:10100/user/activeUser/" + id);
+        String jsonStr = JSONUtil.toJsonStr(email);
+        rabbitTemplate.convertAndSend(RabbitMQConfig.EMAIL_EXCHANGE, RabbitMQConfig.EMAIL_KEY,jsonStr);
+        return Result.success("注册成功");
+    }
+
+    @Override
+    public Result activeUser(int id) {
+        this.update().set("status", 1).eq("id", id).update();
+        return Result.success("激活成功");
     }
 
     private Map<String, String> generateToken(TUser user){

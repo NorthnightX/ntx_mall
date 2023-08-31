@@ -5,6 +5,7 @@ import com.baomidou.mybatisplus.extension.service.IService;
 import com.ntx.mallcommon.domain.Result;
 import com.ntx.mallcommon.domain.TUser;
 import com.ntx.malluser.pojo.VO.LoginForm;
+import com.ntx.malluser.pojo.VO.RegVo;
 
 import java.io.IOException;
 
@@ -46,4 +47,8 @@ public interface TUserService extends IService<TUser> {
     Result updateUserPhone(TUser user);
 
     Result updateUserEmail(TUser user);
+
+    Result reg(RegVo user);
+
+    Result activeUser(int id);
 }
