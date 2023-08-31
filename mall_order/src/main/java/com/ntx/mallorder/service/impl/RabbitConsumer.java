@@ -50,16 +50,13 @@ public class RabbitConsumer {
     public void consume(String msg){
         TOrder tOrder = JSON.parseObject(msg, TOrder.class);
         tOrder.setDeleted(1);
-        tOrder.setStatus(0);
+        //设置状态为未付款
+        tOrder.setStatus(10);
         //免邮费
         tOrder.setPostage(0);
         tOrder.setGmtCreate(LocalDateTime.now());
         tOrder.setGmtModified(LocalDateTime.now());
-        tOrder.setPaymentTime(LocalDateTime.now());
-        tOrder.setCloseTime(LocalDateTime.now());
-        tOrder.setSendTime(LocalDateTime.now());
-        tOrder.setEndTime(LocalDateTime.now());
-        //生成id
+        //获取id
         long id = tOrder.getOrderNo();
         //查询购物车
         List<TCart> userCheckedCart = cartClient.getUserCheckedCart(Math.toIntExact(tOrder.getUserId()));
@@ -101,18 +98,6 @@ public class RabbitConsumer {
         //设置总金额
         tOrder.setPayment(totalAmount);
         ordersService.save(tOrder);
-        //设置支付信息
-        TPayInfo tPayInfo = new TPayInfo();
-        tPayInfo.setUserId(tOrder.getUserId());
-        tPayInfo.setOrderNo(id);
-        tPayInfo.setPayPlatform(Long.valueOf(tOrder.getPaymentType()));
-        tPayInfo.setPlatformNumber(UUID.randomUUID().toString());
-        tPayInfo.setPlatformStatus("未支付");
-        tPayInfo.setStatus(1);
-        tPayInfo.setDeleted(1);
-        tPayInfo.setGmtCreate(LocalDateTime.now());
-        tPayInfo.setGmtModified(LocalDateTime.now());
-        payInfoService.save(tPayInfo);
         //移除用户的购物车信息
         cartClient.removeUserCart(tOrder.getUserId());
         //设置OrderDTO
@@ -125,7 +110,7 @@ public class RabbitConsumer {
         else {
             orderDTO.setPaymentTypeName("支付宝");
         }
-        orderDTO.setStatusName("已支付");
+        orderDTO.setStatusName("未支付");
         mongoTemplate.save(orderDTO);
     }
 }

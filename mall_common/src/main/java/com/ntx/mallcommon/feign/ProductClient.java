@@ -17,4 +17,7 @@ public interface ProductClient {
 
     @PostMapping("/product/updateProductStock")
     Boolean updateProductStock(Map<Long, Integer> map);
+
+    @PostMapping("/product/productStockRollback")
+    Boolean productStockRollback(Map<Long, Integer> map);
 }

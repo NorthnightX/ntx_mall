@@ -13,7 +13,6 @@
     <module>mall_user</module>
     <module>mall_order</module>
     <module>mall_product</module>
-    <module>mall_voucher</module>
     <module>mall_cart</module>
     <module>mall_common</module>
     <module>mall_upload_image</module>

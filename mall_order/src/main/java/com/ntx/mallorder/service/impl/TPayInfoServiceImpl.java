@@ -16,6 +16,8 @@ import org.springframework.stereotype.Service;
 public class TPayInfoServiceImpl extends ServiceImpl<TPayInfoMapper, TPayInfo>
     implements TPayInfoService {
 
+
+
 }
 
 

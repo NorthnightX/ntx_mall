@@ -105,6 +105,7 @@ public class TOrderServiceImpl extends ServiceImpl<TOrderMapper, TOrder>
             order.setUserId(userId);
             String jsonString = JSON.toJSONString(order);
             rabbitTemplate.convertAndSend(RabbitConfig.ORDER_EXCHANGE, RabbitConfig.ORDER_KEY, jsonString);
+            rabbitTemplate.convertAndSend(RabbitConfig.ORDER_TTL_EXCHANGE, RabbitConfig.ORDER_TTL_KEY, jsonString);
             return Result.success(String.valueOf(id));
         } catch (RuntimeException e) {
             return Result.error("网络异常");

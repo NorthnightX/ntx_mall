@@ -396,8 +396,7 @@ public class TProductServiceImpl extends ServiceImpl<TProductMapper, TProduct>
                 if (stock - quantity >= 0) {
                     boolean update = this.update()
                             .set("stock", newStock)
-//                            .eq("stock", stock)
-//                            .eq("sale_count", saleCount)
+                            .set("sale_count", saleCount + quantity)
                             .eq("id", productId)
                             .gt("stock", 0)
                             .update();
@@ -468,6 +467,58 @@ public class TProductServiceImpl extends ServiceImpl<TProductMapper, TProduct>
         query.with(Sort.by(Sort.Direction.DESC, "saleCount"));
         List<ProductDTO> productDTOS = mongoTemplate.find(query, ProductDTO.class);
         return Result.success(productDTOS);
+    }
+
+    @Override
+    @Transactional(rollbackFor = CustomException.class)
+    public Boolean productStockRollback(Map<Long, Integer> map) throws Exception {
+        AtomicReference<Boolean> success = new AtomicReference<>(true);
+        InterProcessMutex lock = new InterProcessMutex(curatorClient, "/lock");
+        try {
+            lock.acquire();
+            map.forEach((productId, quantity) -> {
+                TProduct product = this.getById(productId);
+                Integer stock = product.getStock();
+                Integer saleCount = product.getSaleCount();
+                int newStock = stock + quantity;
+                int newSaleCount = saleCount - quantity;
+                //更新商品数量
+                boolean updated = this.update()
+                        .eq("id", productId)
+                        .set("stock", newStock)
+                        .set("sale_count", newSaleCount)
+                        .update();
+                if(updated){
+                    //更新ES
+                    UpdateRequest request = new UpdateRequest("product", String.valueOf(productId));
+                    request.doc(
+                            "saleCount", newSaleCount,
+                            "stock", newStock);
+                    try {
+                        client.update(request, RequestOptions.DEFAULT);
+                    } catch (IOException e) {
+                        throw new RuntimeException(e);
+                    }
+                    //更新MongoDB
+                    Query query = new Query();
+                    query.addCriteria(Criteria.where("_id").is(productId));
+                    Update update = new Update();
+                    update.set("stock", newStock);
+                    update.set("saleCount", newSaleCount);
+                    mongoTemplate.updateFirst(query, update, ProductDTO.class);
+                }
+                else {
+                    success.set(false);
+                    throw new CustomException("更新失败");
+                }
+            });
+            return success.get();
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        } finally {
+            lock.release();
+        }
+
     }
 
 }

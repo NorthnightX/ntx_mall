@@ -166,16 +166,16 @@ public class TProductController {
         return productService.queryAllProductByCategoryId(id);
     }
 
-//    /**
-//     * 查询基分类下的所有商品
-//     * @return
-//     */
-//    @GetMapping("/queryInitialProduct")
-//    public Result queryInitialProduct(@RequestParam(required = false, defaultValue = "1") Integer pageNum,
-//                                      @RequestParam(required = false, defaultValue = "20") Integer pageSize,
-//                                      @RequestParam int categoryId){
-//        return productService.queryInitialProduct(pageNum, pageSize, categoryId);
-//    }
+    /**
+     * 超时订单商品回滚
+     * @param map
+     * @return
+     */
+    @PostMapping ("/productStockRollback")
+    public Boolean productStockRollback(@RequestBody Map<Long, Integer> map) throws Exception {
+        return productService.productStockRollback(map);
+    }
+
 
 
 }

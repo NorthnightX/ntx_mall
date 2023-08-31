@@ -44,5 +44,7 @@ public interface TProductService extends IService<TProduct> {
 
     Result queryAllProductByCategoryId(Integer id);
 
+    Boolean productStockRollback(Map<Long, Integer> map) throws Exception;
+
 //    Result queryInitialProduct(Integer pageNum, Integer pageSize, int categoryId);
 }
