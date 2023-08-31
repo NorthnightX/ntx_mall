@@ -224,6 +224,62 @@ public class TUserServiceImpl extends ServiceImpl<TUserMapper, TUser>
         return this.getById(userId);
     }
 
+    @Override
+    public Result getLoginUser() {
+        Long id = UserHolder.getUser().getId();
+        UserVO userVO = new UserVO();
+        TUser user = this.getById(id);
+        BeanUtil.copyProperties(user, userVO);
+        return Result.success(userVO);
+    }
+
+    @Override
+    public Result updateUserAvatar(TUser user) {
+        String avatar = user.getAvatar();
+        Long id = UserHolder.getUser().getId();
+        this.update().eq("id", id).set("avatar", avatar).set("gmt_modified", LocalDateTime.now()).update();
+        return Result.success("修改成功");
+    }
+
+    @Override
+    public Result updateUserNickName(TUser user) {
+        String nickName = user.getNickName();
+        Long id = UserHolder.getUser().getId();
+        this.update().eq("id", id).set("nick_name", nickName).set("gmt_modified", LocalDateTime.now()).update();
+        return Result.success("修改成功");
+    }
+
+    @Override
+    public Result updateUserPassword(TUser user) {
+        String password = user.getPassword();
+        String digested = MD5.create().digestHex(password);
+        Long id = UserHolder.getUser().getId();
+        this.update().eq("id", id).set("password", digested).set("gmt_modified", LocalDateTime.now()).update();
+        return Result.success("修改成功");
+    }
+
+    @Override
+    public Result updateUserPhone(TUser user) {
+        String phone = user.getPhone();
+        if(RegexUtils.isPhoneInvalid(phone)){
+            return Result.error("请输入正确的手机号");
+        }
+        Long id = UserHolder.getUser().getId();
+        this.update().eq("id", id).set("phone", phone).set("gmt_modified", LocalDateTime.now()).update();
+        return Result.success("修改成功");
+    }
+
+    @Override
+    public Result updateUserEmail(TUser user) {
+        String email = user.getEmail();
+        if(RegexUtils.isEmailInvalid(email)){
+            return Result.error("请输入正确的邮箱");
+        }
+        Long id = UserHolder.getUser().getId();
+        this.update().eq("id", id).set("email", email).set("gmt_modified", LocalDateTime.now()).update();
+        return Result.success("修改成功");
+    }
+
     private Map<String, String> generateToken(TUser user){
         String token = JwtUtils.generateToken(JSON.toJSONString(user));
         Map<String, String> map = new HashMap<>();

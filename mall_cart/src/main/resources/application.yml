@@ -27,7 +27,7 @@ spring:
         max-idle: 10
         min-idle: 1
         time-between-eviction-runs: 10s
-      shutdown-timeout: 100000ms
+      shutdown-timeout: 60000ms
     host: 8.140.17.235
   #      host: 192.168.80.128
   jackson:

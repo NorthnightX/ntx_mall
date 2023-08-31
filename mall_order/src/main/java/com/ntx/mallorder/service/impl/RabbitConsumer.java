@@ -50,7 +50,7 @@ public class RabbitConsumer {
     public void consume(String msg){
         TOrder tOrder = JSON.parseObject(msg, TOrder.class);
         tOrder.setDeleted(1);
-        tOrder.setStatus(20);
+        tOrder.setStatus(0);
         //免邮费
         tOrder.setPostage(0);
         tOrder.setGmtCreate(LocalDateTime.now());
@@ -107,7 +107,7 @@ public class RabbitConsumer {
         tPayInfo.setOrderNo(id);
         tPayInfo.setPayPlatform(Long.valueOf(tOrder.getPaymentType()));
         tPayInfo.setPlatformNumber(UUID.randomUUID().toString());
-        tPayInfo.setPlatformStatus("已支付");
+        tPayInfo.setPlatformStatus("未支付");
         tPayInfo.setStatus(1);
         tPayInfo.setDeleted(1);
         tPayInfo.setGmtCreate(LocalDateTime.now());

@@ -69,4 +69,30 @@ public class UserController {
     public Result updateUser(@RequestBody TUser user){
         return userService.updateUser(user);
     }
+
+    @GetMapping("/getLoginUser")
+    public Result getLoginUser(){
+        return userService.getLoginUser();
+    }
+
+    @PutMapping("/updateUserAvatar")
+    public Result updateUserAvatar(@RequestBody TUser user){
+        return userService.updateUserAvatar(user);
+    }
+    @PutMapping("/updateUserNickName")
+    public Result updateUserNickName(@RequestBody TUser user){
+        return userService.updateUserNickName(user);
+    }
+    @PutMapping("/updateUserPassword")
+    public Result updateUserPassword(@RequestBody TUser user){
+        return userService.updateUserPassword(user);
+    }
+    @PutMapping("/updateUserPhone")
+    public Result updateUserPhone(@RequestBody TUser user){
+        return userService.updateUserPhone(user);
+    }
+    @PutMapping("/updateUserEmail")
+    public Result updateUserEmail(@RequestBody TUser user){
+        return userService.updateUserEmail(user);
+    }
 }

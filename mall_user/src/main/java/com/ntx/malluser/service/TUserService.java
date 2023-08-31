@@ -34,4 +34,16 @@ public interface TUserService extends IService<TUser> {
     Result updateUser(TUser user);
 
     TUser getUser(Integer userId);
+
+    Result getLoginUser();
+
+    Result updateUserAvatar(TUser user);
+
+    Result updateUserNickName(TUser user);
+
+    Result updateUserPassword(TUser user);
+
+    Result updateUserPhone(TUser user);
+
+    Result updateUserEmail(TUser user);
 }
