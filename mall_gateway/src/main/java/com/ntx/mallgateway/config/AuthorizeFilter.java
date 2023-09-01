@@ -21,7 +21,9 @@ public class AuthorizeFilter implements GlobalFilter, Ordered {
     
     //不需要拦截的
     private final List<String> allowedUris = Arrays.asList(
-            "getVerification", "adminLogin", "query", "image", "userLogin", "queryProductByKeyword","reg","activeUser"
+            "getVerification", "adminLogin", "query", "image", "userLogin", "queryProductByKeyword","reg","activeUser",
+            "recommend","queryByProduct","queryProductRecommend","guessProductByUser","queryInitialCategory","queryChildCategory",
+            "productMessage","isBuy"
     );
     //需要鉴权的
     private final List<String> needAuthUris = Arrays.asList(

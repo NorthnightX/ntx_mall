@@ -41,15 +41,22 @@ public class TOrderItemServiceImpl extends ServiceImpl<TOrderItemMapper, TOrderI
     @Override
     public Result isBuy(int productId) {
         Long userId = UserHolder.getUser().getId();
-        LambdaQueryWrapper<TOrderItem> queryWrapper = new LambdaQueryWrapper<>();
-        queryWrapper.eq(TOrderItem::getProductId, productId);
-        queryWrapper.eq(TOrderItem::getUserId, userId);
-        int count = this.count(queryWrapper);
-        if(count > 0){
-            return Result.success(true);
-        }
-        else {
-            return Result.success(false);
+        try {
+            if(userId == null){
+                return Result.success(false);
+            }
+            LambdaQueryWrapper<TOrderItem> queryWrapper = new LambdaQueryWrapper<>();
+            queryWrapper.eq(TOrderItem::getProductId, productId);
+            queryWrapper.eq(TOrderItem::getUserId, userId);
+            int count = this.count(queryWrapper);
+            if(count > 0){
+                return Result.success(true);
+            }
+            else {
+                return Result.success(false);
+            }
+        } finally {
+            UserHolder.removeUser();
         }
     }
 }

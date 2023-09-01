@@ -130,17 +130,21 @@ public class TOrderServiceImpl extends ServiceImpl<TOrderMapper, TOrder>
      */
     @Override
     public Result myOrder(Integer pageNum, Integer pageSize) {
-        Page<OrderDTO> page = new Page<>(pageNum, pageSize);
-        Long id = UserHolder.getUser().getId();
-        Query query = new Query();
-        query.addCriteria(Criteria.where("userId").is(id));
-        long count = mongoTemplate.count(query, OrderDTO.class);
-        query.skip((long) (pageNum - 1) * pageSize).limit(pageSize);
-        query.with(Sort.by(Sort.Direction.DESC, "gmtCreate"));
-        List<OrderDTO> orderDTOS = mongoTemplate.find(query, OrderDTO.class);
-        page.setTotal(count);
-        page.setRecords(orderDTOS);
-        return Result.success(page);
+        try {
+            Page<OrderDTO> page = new Page<>(pageNum, pageSize);
+            Long id = UserHolder.getUser().getId();
+            Query query = new Query();
+            query.addCriteria(Criteria.where("userId").is(id));
+            long count = mongoTemplate.count(query, OrderDTO.class);
+            query.skip((long) (pageNum - 1) * pageSize).limit(pageSize);
+            query.with(Sort.by(Sort.Direction.DESC, "gmtCreate"));
+            List<OrderDTO> orderDTOS = mongoTemplate.find(query, OrderDTO.class);
+            page.setTotal(count);
+            page.setRecords(orderDTOS);
+            return Result.success(page);
+        } finally {
+            UserHolder.removeUser();
+        }
     }
 
     /**

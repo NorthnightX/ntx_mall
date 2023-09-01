@@ -238,10 +238,14 @@ public class TUserServiceImpl extends ServiceImpl<TUserMapper, TUser>
     @Override
     public Result getLoginUser() {
         Long id = UserHolder.getUser().getId();
-        UserVO userVO = new UserVO();
-        TUser user = this.getById(id);
-        BeanUtil.copyProperties(user, userVO);
-        return Result.success(userVO);
+        try {
+            UserVO userVO = new UserVO();
+            TUser user = this.getById(id);
+            BeanUtil.copyProperties(user, userVO);
+            return Result.success(userVO);
+        } finally {
+            UserHolder.removeUser();
+        }
     }
 
     @Override

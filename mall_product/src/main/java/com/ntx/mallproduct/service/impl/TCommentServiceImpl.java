@@ -134,45 +134,53 @@ public class TCommentServiceImpl extends ServiceImpl<TCommentMapper, TComment>
     @Override
     public Result deleteChildComment(int id) {
         Long userId = UserHolder.getUser().getId();
-        TComment tComment = this.getById(id);
-        TComment commentParent = this.getById(tComment.getCommentParentId());
-        if(!Objects.equals(tComment.getUserId(), userId) || !Objects.equals(commentParent.getUserId(), userId)){
-            return Result.error("权限不足");
+        try {
+            TComment tComment = this.getById(id);
+            TComment commentParent = this.getById(tComment.getCommentParentId());
+            if(!Objects.equals(tComment.getUserId(), userId) || !Objects.equals(commentParent.getUserId(), userId)){
+                return Result.error("权限不足");
+            }
+            //删除子评论
+            this.update().eq("id", id).set("deleted", 0).set("gmt_modified", LocalDateTime.now()).update();
+            TComment comment = this.getById(id);
+            Long commentParentId = comment.getCommentParentId();
+            Query query = new Query();
+            query.addCriteria(Criteria.where("_id").is(commentParentId));
+            CommentDTO commentDTO = mongoTemplate.findOne(query, CommentDTO.class);
+            List<CommentDTO> commentDTOList = null;
+            if (commentDTO != null) {
+                commentDTOList = commentDTO.getCommentDTOList();
+                commentDTOList.removeIf(dto -> dto.getId() == id);
+                Update update = new Update();
+                update.set("commentDTOList", commentDTOList);
+                mongoTemplate.updateFirst(query, update, CommentDTO.class);
+                return Result.success("删除成功");
+            }
+            return Result.error("评论不存在");
+        } finally {
+            UserHolder.removeUser();
         }
-        //删除子评论
-        this.update().eq("id", id).set("deleted", 0).set("gmt_modified", LocalDateTime.now()).update();
-        TComment comment = this.getById(id);
-        Long commentParentId = comment.getCommentParentId();
-        Query query = new Query();
-        query.addCriteria(Criteria.where("_id").is(commentParentId));
-        CommentDTO commentDTO = mongoTemplate.findOne(query, CommentDTO.class);
-        List<CommentDTO> commentDTOList = null;
-        if (commentDTO != null) {
-            commentDTOList = commentDTO.getCommentDTOList();
-            commentDTOList.removeIf(dto -> dto.getId() == id);
-            Update update = new Update();
-            update.set("commentDTOList", commentDTOList);
-            mongoTemplate.updateFirst(query, update, CommentDTO.class);
-            return Result.success("删除成功");
-        }
-        return Result.error("评论不存在");
     }
 
     @Override
     public Result deleteComment(int id) {
         Long userId = UserHolder.getUser().getId();
-        TComment tComment = this.getById(id);
-        if(!Objects.equals(tComment.getUserId(), userId)){
-            return Result.error("权限不足");
+        try {
+            TComment tComment = this.getById(id);
+            if(!Objects.equals(tComment.getUserId(), userId)){
+                return Result.error("权限不足");
+            }
+            //删除父评论
+            this.update().eq("id", id).set("deleted", 0).set("gmt_modified", LocalDateTime.now()).update();
+            //删除子评论
+            this.update().eq("comment_parent_id", id).set("deleted", 0).set("gmt_modified", LocalDateTime.now()).update();
+            Query query = new Query();
+            query.addCriteria(Criteria.where("_id").is(id));
+            mongoTemplate.remove(query, CommentDTO.class);
+            return Result.success("删除成功");
+        } finally {
+            UserHolder.removeUser();
         }
-        //删除父评论
-        this.update().eq("id", id).set("deleted", 0).set("gmt_modified", LocalDateTime.now()).update();
-        //删除子评论
-        this.update().eq("comment_parent_id", id).set("deleted", 0).set("gmt_modified", LocalDateTime.now()).update();
-        Query query = new Query();
-        query.addCriteria(Criteria.where("_id").is(id));
-        mongoTemplate.remove(query, CommentDTO.class);
-        return Result.success("删除成功");
     }
 }
 

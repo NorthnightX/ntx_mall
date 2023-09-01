@@ -36,5 +36,6 @@ public class AopConfig {
                 response.setHeader("update", token);
             }
         }
+        UserHolder.removeUser();
     }
 }
