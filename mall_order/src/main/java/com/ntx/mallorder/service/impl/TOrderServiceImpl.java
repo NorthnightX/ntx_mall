@@ -10,6 +10,7 @@ import com.ntx.mallcommon.feign.CartClient;
 import com.ntx.mallcommon.feign.ProductClient;
 import com.ntx.mallcommon.feign.UserClient;
 import com.ntx.mallorder.DTO.OrderDTO;
+import com.ntx.mallorder.DTO.RateDTO;
 import com.ntx.mallorder.DTO.UserHolder;
 import com.ntx.mallorder.config.RabbitConfig;
 import com.ntx.mallorder.mapper.TOrderMapper;
@@ -55,6 +56,8 @@ public class TOrderServiceImpl extends ServiceImpl<TOrderMapper, TOrder>
     private UserClient userClient;
     @Autowired
     private TPayInfoService payInfoService;
+    @Autowired
+    private TOrderMapper orderMapper;
 
     /**
      * 生成订单
@@ -253,6 +256,37 @@ public class TOrderServiceImpl extends ServiceImpl<TOrderMapper, TOrder>
             mongoTemplate.updateFirst(query, update, OrderDTO.class);
         }
         return Result.success("支付成功");
+    }
+
+    @Override
+    public Result getPayMethodRate() {
+        List<RateDTO> payMethodRate = orderMapper.getPayMethodRate();
+        for (RateDTO rateDTO : payMethodRate) {
+            String name = rateDTO.getName();
+            if(name.equals("1")){
+                rateDTO.setName("微信");
+            }
+            else{
+                rateDTO.setName("支付宝");
+            }
+        }
+        return Result.success(payMethodRate);
+    }
+
+    @Override
+    public Result orderStatusRate() {
+        List<RateDTO> orderStatusRate = orderMapper.orderStatusRate();
+        for (RateDTO rateDTO : orderStatusRate) {
+            String name = rateDTO.getName();
+            if(name.equals("0")){
+                rateDTO.setName("已取消");
+            } else if (name.equals("10")) {
+                rateDTO.setName("待支付");
+            } else if (name.equals("20")) {
+                rateDTO.setName("已支付");
+            }
+        }
+        return Result.success(orderStatusRate);
     }
 }
 

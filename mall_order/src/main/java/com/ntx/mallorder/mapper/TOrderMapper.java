@@ -3,7 +3,10 @@ package com.ntx.mallorder.mapper;
 
 import com.baomidou.mybatisplus.core.mapper.BaseMapper;
 import com.ntx.mallcommon.domain.TOrder;
+import com.ntx.mallorder.DTO.RateDTO;
 import org.apache.ibatis.annotations.Mapper;
+
+import java.util.List;
 
 /**
 * @author NorthnightX
@@ -13,7 +16,9 @@ import org.apache.ibatis.annotations.Mapper;
 */
 @Mapper
 public interface TOrderMapper extends BaseMapper<TOrder> {
+    List<RateDTO> getPayMethodRate();
 
+    List<RateDTO> orderStatusRate();
 }
 
 

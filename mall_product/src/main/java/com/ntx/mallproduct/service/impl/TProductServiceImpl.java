@@ -143,7 +143,6 @@ public class TProductServiceImpl extends ServiceImpl<TProductMapper, TProduct>
      */
     @Override
     public Result deleteProduct(Integer id) throws IOException {
-        //暂停使用
         Boolean order = orderClient.getOrder(id);
         if(!order){
             return Result.error("该商品下有订单存在");

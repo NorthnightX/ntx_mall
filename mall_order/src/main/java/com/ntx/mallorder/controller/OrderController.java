@@ -63,5 +63,23 @@ public class OrderController {
         return orderService.payForOrder(order);
     }
 
+    /**
+     * 支付比率
+     * @return
+     */
+    @GetMapping("/getPayMethodRate")
+    public Result getPayResult(){
+        return orderService.getPayMethodRate();
+    }
+
+    /**
+     * 订单状态比率
+     * @return
+     */
+    @GetMapping("/orderStatusRate")
+    public Result orderStatusRate(){
+        return orderService.orderStatusRate();
+    }
+
 
 }

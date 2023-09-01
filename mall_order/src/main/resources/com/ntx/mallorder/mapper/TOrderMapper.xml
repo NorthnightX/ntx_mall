@@ -5,4 +5,10 @@
 <mapper namespace="com.ntx.mallorder.mapper.TOrderMapper">
 
 
+    <select id="getPayMethodRate" resultType="com.ntx.mallorder.DTO.RateDTO">
+        select payment_type as name, count(*) as value from t_order group by payment_type
+    </select>
+    <select id="orderStatusRate" resultType="com.ntx.mallorder.DTO.RateDTO">
+        select status as name, count(*) as value from t_order group by status
+    </select>
 </mapper>

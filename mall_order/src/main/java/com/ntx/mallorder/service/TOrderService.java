@@ -23,5 +23,9 @@ public interface TOrderService extends IService<TOrder> {
 
     Result payForOrder(TOrder order);
 
+    Result getPayMethodRate();
+
+    Result orderStatusRate();
+
     ;
 }
