@@ -11,13 +11,13 @@ import org.springframework.http.server.reactive.ServerHttpResponse;
 import org.springframework.stereotype.Component;
 import org.springframework.web.server.ServerWebExchange;
 import reactor.core.publisher.Mono;
-import reactor.netty.http.server.HttpServerResponse;
 
 import java.util.Arrays;
 import java.util.List;
 
 @Component
 public class AuthorizeFilter implements GlobalFilter, Ordered {
+
     
     //不需要拦截的
     private final List<String> allowedUris = Arrays.asList(
@@ -27,7 +27,6 @@ public class AuthorizeFilter implements GlobalFilter, Ordered {
     private final List<String> needAuthUris = Arrays.asList(
             "updateCategory", "deleteCategory", "addCategory"
     );
-
     @Override
     public Mono<Void> filter(ServerWebExchange exchange, GatewayFilterChain chain) {
         String uri = exchange.getRequest().getURI().toString();

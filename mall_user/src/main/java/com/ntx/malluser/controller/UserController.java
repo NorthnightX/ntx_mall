@@ -10,6 +10,8 @@ import com.ntx.malluser.service.TUserService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 
+import javax.servlet.http.HttpServletRequest;
+import javax.servlet.http.HttpServletResponse;
 import java.io.IOException;
 
 @RestController
@@ -77,23 +79,24 @@ public class UserController {
     }
 
     @PutMapping("/updateUserAvatar")
-    public Result updateUserAvatar(@RequestBody TUser user){
+    public Result updateUserAvatar(@RequestBody TUser user, HttpServletResponse response){
+
         return userService.updateUserAvatar(user);
     }
     @PutMapping("/updateUserNickName")
-    public Result updateUserNickName(@RequestBody TUser user){
+    public Result updateUserNickName(@RequestBody TUser user, HttpServletResponse response){
         return userService.updateUserNickName(user);
     }
     @PutMapping("/updateUserPassword")
-    public Result updateUserPassword(@RequestBody TUser user){
+    public Result updateUserPassword(@RequestBody TUser user, HttpServletResponse response){
         return userService.updateUserPassword(user);
     }
     @PutMapping("/updateUserPhone")
-    public Result updateUserPhone(@RequestBody TUser user){
+    public Result updateUserPhone(@RequestBody TUser user, HttpServletResponse response){
         return userService.updateUserPhone(user);
     }
     @PutMapping("/updateUserEmail")
-    public Result updateUserEmail(@RequestBody TUser user){
+    public Result updateUserEmail(@RequestBody TUser user, HttpServletResponse response){
         return userService.updateUserEmail(user);
     }
     @PostMapping("/reg")

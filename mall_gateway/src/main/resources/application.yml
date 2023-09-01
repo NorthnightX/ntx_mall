@@ -47,6 +47,6 @@ spring:
             allowedMethods: "*" #允许跨域的ajax的请求
             allowCredentials: true # 是否允许携带cookie
             maxAge: 360000 # 这次跨域检测的有效期
-            exposed-headers: "Authorization" #设置向浏览器暴漏的响应头
+            exposed-headers: ["Authorization","update"] #设置向浏览器暴漏的响应头
 #      default-filters:
 #        - AddRequestHeader=NTX,NorthNightX #全局过滤器
