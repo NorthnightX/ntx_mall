@@ -111,6 +111,7 @@ public class TUserServiceImpl extends ServiceImpl<TUserMapper, TUser>
                 //如果密码错误
                 if(!user.getPassword().equals(MD5Password)){
                     stringRedisTemplate.opsForValue().setIfAbsent(loginErrorKey, String.valueOf(0));
+                    stringRedisTemplate.expire(loginErrorKey, LOGIN_ADMIN_ERROR_TTL, TimeUnit.MINUTES);
                     Long increment = stringRedisTemplate.opsForValue().increment(loginErrorKey);
                     if(increment == null){
                         return Result.error("网络异常，请稍后再试");
