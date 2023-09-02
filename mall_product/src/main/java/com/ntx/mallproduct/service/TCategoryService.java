@@ -6,6 +6,8 @@ import com.ntx.mallcommon.domain.Result;
 import com.ntx.mallcommon.domain.TCategory;
 import com.ntx.mallproduct.DTO.CategoryDTO;
 
+import java.io.IOException;
+
 /**
 * @author NorthnightX
 * @description 针对表【t_category】的数据库操作Service
@@ -17,7 +19,7 @@ public interface TCategoryService extends IService<TCategory> {
 
     Result queryInitialCategory();
 
-    Result updateCategory(CategoryDTO categoryDTO);
+    Result updateCategory(CategoryDTO categoryDTO) throws IOException;
 
     Result updateCategoryStatus(TCategory category);
 

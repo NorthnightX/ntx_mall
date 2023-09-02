@@ -9,6 +9,8 @@ import com.ntx.mallproduct.service.TCategoryService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 
+import java.io.IOException;
+
 @RestController
 @RequestMapping("/category")
 public class TCategoryController {
@@ -54,7 +56,7 @@ public class TCategoryController {
      * @return
      */
     @PutMapping("/updateCategory")
-    public Result updateCategory(@RequestBody CategoryDTO categoryDTO){
+    public Result updateCategory(@RequestBody CategoryDTO categoryDTO) throws IOException {
         return categoryService.updateCategory(categoryDTO);
     }
 

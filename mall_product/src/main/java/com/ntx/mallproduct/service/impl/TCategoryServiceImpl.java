@@ -13,6 +13,10 @@ import com.ntx.mallproduct.mapper.TCategoryMapper;
 import com.ntx.mallproduct.service.TCategoryService;
 
 import com.ntx.mallproduct.service.TProductService;
+import org.elasticsearch.action.update.UpdateRequest;
+import org.elasticsearch.client.RequestOptions;
+import org.elasticsearch.client.RestHighLevelClient;
+import org.elasticsearch.index.reindex.UpdateByQueryRequest;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.mongodb.core.MongoTemplate;
 import org.springframework.data.mongodb.core.query.Criteria;
@@ -22,6 +26,7 @@ import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.io.IOException;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
@@ -43,6 +48,8 @@ public class TCategoryServiceImpl extends ServiceImpl<TCategoryMapper, TCategory
     private StringRedisTemplate stringRedisTemplate;
     @Autowired
     private TProductService productService;
+    @Autowired
+    private RestHighLevelClient client;
 
     /**
      * 分类分页查询
@@ -96,7 +103,7 @@ public class TCategoryServiceImpl extends ServiceImpl<TCategoryMapper, TCategory
      * @return
      */
     @Override
-    public Result updateCategory(CategoryDTO categoryDTO) {
+    public Result updateCategory(CategoryDTO categoryDTO) throws IOException {
         if(categoryDTO.getStatus() == 0){
             Long id = categoryDTO.getId();
             Query queryCategory = new Query();
@@ -116,6 +123,34 @@ public class TCategoryServiceImpl extends ServiceImpl<TCategoryMapper, TCategory
                 return Result.error("该分类下还有产品未处理");
             }
         }
+        //基分类处理
+        TCategory tCategory = this.getById(categoryDTO.getId());
+        if(tCategory.getParentId() == 0){
+            Long parentId = categoryDTO.getParentId();
+            //如果改动了基分类的分类
+            if(parentId != 0){
+                //搜索该基分类下有没有分类
+                Query queryCategory = new Query();
+                queryCategory.addCriteria(Criteria.where("parentId").is(tCategory.getId()));
+                queryCategory.addCriteria(Criteria.where("status").is(1));
+                queryCategory.addCriteria(Criteria.where("deleted").is(1));
+                CategoryDTO one = mongoTemplate.findOne(queryCategory, CategoryDTO.class);
+                if(one != null){
+                    return Result.error("该基分类下还有分类没有处理");
+                }
+            }
+        }
+        //如果要将该分类设为基分类
+        if(categoryDTO.getParentId() == 0){
+            Query queryProduct= new Query();
+            queryProduct.addCriteria(Criteria.where("categoryId").is(tCategory.getId()));
+            queryProduct.addCriteria(Criteria.where("status").is(1));
+            queryProduct.addCriteria(Criteria.where("deleted").is(1));
+            ProductDTO one = mongoTemplate.findOne(queryProduct, ProductDTO.class);
+            if(one != null){
+                return Result.error("该分类下还有商品，不能设置为基分类");
+            }
+        }
         TCategory category = new TCategory();
         categoryDTO.setGmtModified(LocalDateTime.now());
         BeanUtil.copyProperties(categoryDTO, category);
@@ -129,6 +164,24 @@ public class TCategoryServiceImpl extends ServiceImpl<TCategoryMapper, TCategory
             categoryDTO.setParentName(categoryParent.getName());
         }
         mongoTemplate.save(categoryDTO);
+        //修改mongoDB的商品信息
+        Query query = new Query();
+        query.addCriteria(Criteria.where("categoryId").is(categoryDTO.getId()));
+        List<ProductDTO> productDTOS = mongoTemplate.find(query, ProductDTO.class);
+        Update updateProductCategoryName = new Update();
+        updateProductCategoryName.set("categoryName", category.getName());
+        mongoTemplate.updateMulti(query, updateProductCategoryName, ProductDTO.class);
+        //修改ES的商品
+        List<Long> collect = productDTOS.stream().map(ProductDTO::getId).collect(Collectors.toList());
+        collect.forEach(id -> {
+            UpdateRequest updateRequest = new UpdateRequest("product", String.valueOf(id));
+            updateRequest.doc("categoryName", category.getName());
+            try {
+                client.update(updateRequest, RequestOptions.DEFAULT);
+            } catch (IOException e) {
+                throw new RuntimeException(e);
+            }
+        });
         return update ? Result.success("修改成功") : Result.error("网络异常");
     }
 

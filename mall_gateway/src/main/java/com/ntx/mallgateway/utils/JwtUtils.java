@@ -13,7 +13,6 @@ import java.util.Date;
 public class JwtUtils {
     //使用SHA-256进行签名
     private static final String KEY = "ntx_blog_auth";
-//    private static final Long  TTL = 1L;
     private static final Long  TTL = 604800000L;
     private static Key getSigningKey() {
         // 使用 SHA-256 生成密钥
