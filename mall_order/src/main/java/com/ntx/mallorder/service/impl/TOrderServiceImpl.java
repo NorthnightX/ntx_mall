@@ -288,7 +288,14 @@ public class TOrderServiceImpl extends ServiceImpl<TOrderMapper, TOrder>
                 rateDTO.setName("待支付");
             } else if (name.equals("20")) {
                 rateDTO.setName("已支付");
+            } else if (name.equals("40")) {
+                rateDTO.setName("已发货");
+            } else if (name.equals("50")) {
+                rateDTO.setName("已收货");
+            } else if (name.equals("60")) {
+                rateDTO.setName("已退款");
             }
+
         }
         return Result.success(orderStatusRate);
     }
@@ -331,13 +338,46 @@ public class TOrderServiceImpl extends ServiceImpl<TOrderMapper, TOrder>
             update.set("status", 50);
             update.set("statusName", "已收货");
             mongoTemplate.updateFirst(query, update, OrderDTO.class);
-            return Result.success("收获成功");
+            return Result.success("收货成功");
         }
         if(tOrder.getStatus() == 20){
             return Result.error("商品还未发货");
         }
         else {
             return Result.error("订单已取消或未付款");
+        }
+    }
+
+    @Override
+    public Result refund(Long orderNo) {
+        LambdaQueryWrapper<TOrder> queryWrapper = new LambdaQueryWrapper<>();
+        queryWrapper.eq(TOrder::getOrderNo, orderNo);
+        TOrder tOrder = this.getOne(queryWrapper);
+        if(tOrder.getStatus() == 20 || tOrder.getStatus() == 40){
+            this.update().set("status", 60).set("end_time", LocalDateTime.now()).eq("order_no", orderNo).update();
+            Query query = new Query();
+            query.addCriteria(Criteria.where("_id").is(orderNo));
+            Update update = new Update();
+            update.set("endTime", LocalDateTime.now());
+            update.set("status", 60);
+            update.set("statusName", "已退款");
+            LambdaQueryWrapper<TOrderItem> queryWrapperOrderItem = new LambdaQueryWrapper<>();
+            queryWrapperOrderItem.eq(TOrderItem::getOrderNo, orderNo);
+            List<TOrderItem> list = orderItemService.list(queryWrapperOrderItem);
+            Map<Long, Integer> map = new HashMap<>();
+            for (TOrderItem orderItem : list) {
+                Integer quantity = orderItem.getQuantity();
+                Long productId = orderItem.getProductId();
+                map.put(productId, quantity);
+            }
+            //修改商品数量
+            productClient.productStockRollback(map);
+            mongoTemplate.updateFirst(query, update, OrderDTO.class);
+            return Result.success("退款成功");
+        } else if (tOrder.getStatus() == 50) {
+            return Result.error("该订单已经收货");
+        } else{
+            return Result.error("该订单已取消或未付款");
         }
     }
 }

@@ -81,13 +81,33 @@ public class OrderController {
         return orderService.orderStatusRate();
     }
 
+    /**
+     * 发货
+     * @param orderNo
+     * @return
+     */
     @PutMapping("/send/{orderNo}")
     public Result send(@PathVariable Long orderNo){
             return orderService.send(orderNo);
     }
 
+    /**
+     * 收货
+     * @param orderNo
+     * @return
+     */
     @PutMapping("/harvest/{orderNo}")
     public Result harvest(@PathVariable Long orderNo){
         return orderService.harvest(orderNo);
+    }
+
+    /**
+     * 退款
+     * @param orderNo
+     * @return
+     */
+    @PutMapping("/refund/{orderNo}")
+    public Result orderNo(@PathVariable Long orderNo){
+        return orderService.refund(orderNo);
     }
 }

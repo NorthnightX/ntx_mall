@@ -31,5 +31,7 @@ public interface TOrderService extends IService<TOrder> {
 
     Result harvest(Long orderNo);
 
+    Result refund(Long orderNo);
+
     ;
 }
