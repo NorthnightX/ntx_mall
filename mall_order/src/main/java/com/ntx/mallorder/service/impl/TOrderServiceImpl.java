@@ -292,6 +292,54 @@ public class TOrderServiceImpl extends ServiceImpl<TOrderMapper, TOrder>
         }
         return Result.success(orderStatusRate);
     }
+
+    @Override
+    public Result send(Long orderNo) {
+        LambdaQueryWrapper<TOrder> queryWrapper = new LambdaQueryWrapper<>();
+        queryWrapper.eq(TOrder::getOrderNo, orderNo);
+        TOrder tOrder = this.getOne(queryWrapper);
+        if(tOrder.getStatus() == 40){
+            return Result.error("商品已经发货");
+        }
+        if(tOrder.getStatus() == 20){
+            this.update().set("status", 40).set("send_time", LocalDateTime.now()).eq("order_no", orderNo).update();
+            Query query = new Query();
+            query.addCriteria(Criteria.where("_id").is(orderNo));
+            Update update = new Update();
+            update.set("sendTime", LocalDateTime.now());
+            update.set("status", 40);
+            update.set("statusName", "已发货");
+            mongoTemplate.updateFirst(query, update, OrderDTO.class);
+            return Result.success("发货成功");
+        }
+        else {
+            return Result.error("订单已取消或未付款");
+        }
+    }
+
+    @Override
+    public Result harvest(Long orderNo) {
+        LambdaQueryWrapper<TOrder> queryWrapper = new LambdaQueryWrapper<>();
+        queryWrapper.eq(TOrder::getOrderNo, orderNo);
+        TOrder tOrder = this.getOne(queryWrapper);
+        if(tOrder.getStatus() == 40){
+            this.update().set("status", 50).set("end_time", LocalDateTime.now()).eq("order_no", orderNo).update();
+            Query query = new Query();
+            query.addCriteria(Criteria.where("_id").is(orderNo));
+            Update update = new Update();
+            update.set("endTime", LocalDateTime.now());
+            update.set("status", 50);
+            update.set("statusName", "已收货");
+            mongoTemplate.updateFirst(query, update, OrderDTO.class);
+            return Result.success("收获成功");
+        }
+        if(tOrder.getStatus() == 20){
+            return Result.error("商品还未发货");
+        }
+        else {
+            return Result.error("订单已取消或未付款");
+        }
+    }
 }
 
 

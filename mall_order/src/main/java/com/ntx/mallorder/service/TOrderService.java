@@ -27,5 +27,9 @@ public interface TOrderService extends IService<TOrder> {
 
     Result orderStatusRate();
 
+    Result send(Long orderNo);
+
+    Result harvest(Long orderNo);
+
     ;
 }

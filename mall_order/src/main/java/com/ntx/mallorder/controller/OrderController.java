@@ -81,5 +81,13 @@ public class OrderController {
         return orderService.orderStatusRate();
     }
 
+    @PutMapping("/send/{orderNo}")
+    public Result send(@PathVariable Long orderNo){
+            return orderService.send(orderNo);
+    }
 
+    @PutMapping("/harvest/{orderNo}")
+    public Result harvest(@PathVariable Long orderNo){
+        return orderService.harvest(orderNo);
+    }
 }
