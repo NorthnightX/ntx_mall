@@ -117,42 +117,46 @@ public class TCartServiceImpl extends ServiceImpl<TCartMapper, TCart>
     @Override
     public Result getCart() {
         TUser user = UserHolder.getUser();
-        Long userId = user.getId();
-        String redisKey = USER_CART + userId;
-        //根据用户获取用户的购物车id
-        Set<String> members = stringRedisTemplate.opsForSet().members(redisKey);
-        //用户购物车为空
-        if (members == null || members.size() == 0) {
-            //返回空集合
-            return Result.success(new ArrayList<>());
+        try {
+            Long userId = user.getId();
+            String redisKey = USER_CART + userId;
+            //根据用户获取用户的购物车id
+            Set<String> members = stringRedisTemplate.opsForSet().members(redisKey);
+            //用户购物车为空
+            if (members == null || members.size() == 0) {
+                //返回空集合
+                return Result.success(new ArrayList<>());
+            }
+            //根据redis的信息查询mongoDB
+            Query query = new Query();
+            query.addCriteria(Criteria.where("_id").in(members));
+            List<CartDTO> cartDTOS = mongoTemplate.find(query, CartDTO.class);
+            if(cartDTOS.size() > 0){
+                return Result.success(cartDTOS);
+            }
+            //mongoDB没有查询数据库
+            LambdaQueryWrapper<TCart> queryWrapper = new LambdaQueryWrapper<>();
+            queryWrapper.in(TCart::getId, members);
+            List<TCart> list = this.list(queryWrapper);
+            List<Long> productIdList = list.stream().map(TCart::getProductId).collect(Collectors.toList());
+            List<TProduct> product = productClient.getProduct(productIdList);
+            Map<Long, TProduct> collect = product.stream().collect(Collectors.toMap(TProduct::getId, product1 -> product1));
+            List<CartDTO> cartDTOList = list.stream().map(cart -> {
+                CartDTO cartDTO = new CartDTO();
+                BeanUtil.copyProperties(cart, cartDTO);
+                Long productId = cartDTO.getProductId();
+                String productName = collect.get(productId).getName();
+                BigDecimal price = collect.get(productId).getPrice();
+                cartDTO.setProductPrice(price);
+                cartDTO.setProductName(productName);
+                cartDTO.setProductImage(collect.get(productId).getMainImage());
+                mongoTemplate.save(cartDTO);
+                return cartDTO;
+            }).collect(Collectors.toList());
+            return Result.success(cartDTOList);
+        } finally {
+            UserHolder.removeUser();
         }
-        //根据redis的信息查询mongoDB
-        Query query = new Query();
-        query.addCriteria(Criteria.where("_id").in(members));
-        List<CartDTO> cartDTOS = mongoTemplate.find(query, CartDTO.class);
-        if(cartDTOS.size() > 0){
-            return Result.success(cartDTOS);
-        }
-        //mongoDB没有查询数据库
-        LambdaQueryWrapper<TCart> queryWrapper = new LambdaQueryWrapper<>();
-        queryWrapper.in(TCart::getId, members);
-        List<TCart> list = this.list(queryWrapper);
-        List<Long> productIdList = list.stream().map(TCart::getProductId).collect(Collectors.toList());
-        List<TProduct> product = productClient.getProduct(productIdList);
-        Map<Long, TProduct> collect = product.stream().collect(Collectors.toMap(TProduct::getId, product1 -> product1));
-        List<CartDTO> cartDTOList = list.stream().map(cart -> {
-            CartDTO cartDTO = new CartDTO();
-            BeanUtil.copyProperties(cart, cartDTO);
-            Long productId = cartDTO.getProductId();
-            String productName = collect.get(productId).getName();
-            BigDecimal price = collect.get(productId).getPrice();
-            cartDTO.setProductPrice(price);
-            cartDTO.setProductName(productName);
-            cartDTO.setProductImage(collect.get(productId).getMainImage());
-            mongoTemplate.save(cartDTO);
-            return cartDTO;
-        }).collect(Collectors.toList());
-        return Result.success(cartDTOList);
     }
 
 
