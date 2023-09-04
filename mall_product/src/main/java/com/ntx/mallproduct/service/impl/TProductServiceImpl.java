@@ -518,7 +518,6 @@ public class TProductServiceImpl extends ServiceImpl<TProductMapper, TProduct>
         } finally {
             lock.release();
         }
-
     }
 
 }
